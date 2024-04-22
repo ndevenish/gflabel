@@ -9,40 +9,32 @@ import re
 from argparse import ArgumentParser
 from collections.abc import Callable, Sequence
 from itertools import islice
-from math import cos, pi, radians, sin, tan
 
 import build123d as bd
 
 # from build123d import *
 from build123d import (
-    Axis,
-    BuildLine,
     BuildPart,
     BuildSketch,
-    CenterArc,
-    Circle,
-    FilletPolyline,
     FontStyle,
     Location,
     Locations,
     Mode,
     Part,
-    Plane,
-    Polyline,
-    RegularPolygon,
     Sketch,
     Text,
     add,
     export_step,
     extrude,
-    fillet,
-    make_face,
-    mirror,
 )
 from ocp_vscode import Camera, set_defaults, show
 
+from . import fragments
+from .bases import pred
+
 logger = logging.getLogger(__name__)
 
+# logging.basicConfig(level=logging.DEBUG)
 set_defaults(reset_camera=Camera.CENTER)
 
 
@@ -56,252 +48,6 @@ def batched(iterable, n):
         yield batch
 
 
-def _outer_edge(width_u: int) -> Sketch:
-    # Width of straight bit in label is:
-    #   Bin width (u * 42)
-    # - label margins (4.2mm)
-    # - label end size (1.9mm per end)
-    straight_width = width_u * 42 - 4.2 - (1.9 * 2)
-    with BuildSketch() as sketch:
-        with BuildLine() as line:
-            # Where the sketch is placed in X. 2.1 is the pred label offset
-            # on one edge; 1.9 is the extra distance to our "zero" point
-            # x = 2.1 + 1.9
-            x = -straight_width / 2
-            l1 = Polyline([(x - 1.9, 0), (x - 1.9, 2.85), (x - 0.9, 2.85)])
-            FilletPolyline(
-                [
-                    l1 @ 1,
-                    (x - 0.9, 5.75),
-                    (0, 5.75),
-                ],
-                radius=0.9,
-            )
-            mirror(line.line, Plane.XZ)
-            mirror(line.line, Plane.YZ)
-
-        make_face()
-
-        with Locations([(x - 0.4, 0, 0.4), (x + straight_width + 0.4, 0, 0.4)]):
-            Circle(0.75, mode=Mode.SUBTRACT)
-
-    return sketch.sketch
-
-
-def _inner_edge(width_u: int) -> Sketch:
-    straight_width = width_u * 42 - 4.2 - (1.9 * 2)
-    x = -straight_width / 2
-    with BuildSketch() as sketch:
-        with BuildLine() as line:
-            a1 = CenterArc((x - 0.4, 0), 1.25, 0, 90)
-            FilletPolyline([a1 @ 1, (x - 0.4, 5.25), (0, 5.25)], radius=0.4)
-            # Fillet the vertex between the arc and polyline
-            fillet([line.vertices().sort_by_distance(a1 @ 1)[0]], radius=1)
-            mirror(line.line, Plane.XZ)
-            mirror(line.line, Plane.YZ)
-        make_face()
-
-    return sketch.sketch
-
-
-def make_label_body(width_u: int) -> Part:
-    with BuildPart() as part:
-        add(_outer_edge(width_u=width_u))
-        # Extrude the base up
-        extrude(amount=0.4, both=True)
-
-        add(_inner_edge(width_u=width_u))
-        # Cut the indent out of the top face
-        extrude(amount=0.4, mode=Mode.SUBTRACT)
-
-        # 0.2 mm fillet all top edges
-        fillet_edges = [
-            *part.edges().group_by(Axis.Z)[-1],
-            *part.edges().group_by(Axis.Z)[0],
-        ]
-        fillet(fillet_edges, radius=0.2)
-    return part.part
-
-
-def _fragment_hexhead(height: float, _maxsize: float) -> Sketch:
-    with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        Circle(height / 2)
-        RegularPolygon(height / 2 * 0.6, side_count=6, mode=Mode.SUBTRACT)
-    return sketch.sketch
-
-
-def _fragment_hexnut(height: float, _maxsize: float) -> Sketch:
-    with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        RegularPolygon(height / 2, side_count=6)
-        Circle(height / 2 * 0.4, mode=Mode.SUBTRACT)
-    return sketch.sketch
-
-
-def _fragment_washer(height: float, _maxsize: float) -> Sketch:
-    with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        Circle(height / 2)
-        Circle(height / 2 * 0.4, mode=Mode.SUBTRACT)
-    return sketch.sketch
-
-
-def _fragment_bolt(length: float | str, height: float, maxsize: float) -> Sketch:
-    length = float(length)
-    # line width: How thick the head and body are
-    lw = height / 2.25
-    # The half-width of the dividing split
-    half_split = 0.75
-
-    # Don't allow lengths smaller than lw
-    # length = max(length, lw * 2 + half_split)
-    maxsize = max(maxsize, lw * 2 + half_split * 2 + 0.1)
-    # Work out what the total length is, and if this is over max size
-    # then we need to cut the bolt
-    split_bolt = length + lw > maxsize
-    # Halfwidth distance
-    if split_bolt:
-        hw = maxsize / 2
-    else:
-        hw = (length + lw) / 2
-
-    if not split_bolt:
-        with BuildSketch(mode=Mode.PRIVATE) as sketch:
-            with BuildLine() as line:
-                Polyline(
-                    [
-                        (-hw, 0),
-                        (-hw, height / 2),
-                        (-hw + lw, height / 2),
-                        (-hw + lw, lw / 2),
-                        (hw, lw / 2),
-                        (hw, 0),
-                    ],
-                )
-                mirror(line.line, Plane.XZ)
-            make_face()
-    else:
-        # We need to split the bolt
-        with BuildSketch(mode=Mode.PRIVATE) as sketch:
-            x_shaft_midpoint = lw + (maxsize - lw) / 2 - hw
-            with BuildLine() as line:
-                Polyline(
-                    [
-                        (-hw, height / 2),
-                        (-hw + lw, height / 2),
-                        (-hw + lw, lw / 2),
-                        # Divider is halfway along the shaft
-                        (x_shaft_midpoint + lw / 2 - half_split, lw / 2),
-                        (x_shaft_midpoint - lw / 2 - half_split, -lw / 2),
-                        (-hw + lw, -lw / 2),
-                        (-hw + lw, -height / 2),
-                        (-hw, -height / 2),
-                    ],
-                    close=True,
-                )
-            make_face()
-            with BuildLine() as line:
-                Polyline(
-                    [
-                        # Divider is halfway along the shaft
-                        (x_shaft_midpoint + lw / 2 + half_split, lw / 2),
-                        (hw, lw / 2),
-                        (hw, -lw / 2),
-                        (x_shaft_midpoint - lw / 2 + half_split, -lw / 2),
-                    ],
-                    close=True,
-                )
-            make_face()
-    return sketch.sketch
-
-
-def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
-    # symb = import_svg("symbols/variable_resistor.svg")
-    t = 0.4 / 2
-    w = 6.5
-    h = 2
-    with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        # add(symb)
-        # Circle(1)
-        # sweep(symb)
-        with BuildLine():
-            Polyline(
-                [
-                    (-6, 0),
-                    (-6, t),
-                    (-w / 2 - t, t),
-                    (-w / 2 - t, h / 2 + t),
-                    (0, h / 2 + t),
-                    (0, h / 2 - t),
-                    (-w / 2 + t, h / 2 - t),
-                    (-w / 2 + t, 0),
-                ],
-                close=True,
-            )
-        make_face()
-        mirror(sketch.sketch, Plane.XZ)
-        mirror(sketch.sketch, Plane.YZ)
-
-        # with BuildLine():
-        l_arr = 7
-        l_head = 1.5
-        angle = 30
-
-        theta = radians(angle)
-        oh = t / tan(theta) + t / sin(theta)
-        sigma = pi / 2 - theta
-        l_short = t / cos(sigma)
-        #     l_arrow = 1.5
-        #     angle = 30
-        #     # Work out the intersect height
-        #     h_i = t / math.sin(math.radians(angle))
-        #     arr_bottom_lost = t / math.tan(math.radians(angle))
-        arrow_parts = [
-            (0, -l_arr / 2),
-            (-t, -l_arr / 2),
-            (-t, l_arr / 2 - oh),
-            (
-                -t - sin(theta) * (l_head - l_short),
-                l_arr / 2 - oh - cos(theta) * (l_head - l_short),
-            ),
-            (-sin(theta) * l_head, l_arr / 2 - cos(theta) * l_head),
-            (0, l_arr / 2),
-            # (0, -l_arr / 2),
-        ]
-        with BuildSketch(mode=Mode.PRIVATE) as arrow:
-            with BuildLine() as line:
-                Polyline(
-                    arrow_parts,
-                    # close=True,
-                )
-                mirror(line.line, Plane.YZ)
-            make_face()
-        add(arrow.sketch.rotate(Axis.Z, -30))
-        # sketch.sketch.rotate(Axis.Z, 20)
-        # with BuildLine() as line:
-        #     Line([(0, -arr_h / 2), (0, arr_h / 2)])
-        # Arrow(arr_h, line, t * 2, head_at_start=False)
-        # mirror(line.line, Plane.XZ)
-        # mirror(line.line, Plane.YZ)
-        # offset(symb, amount=1)
-        # add(symb)
-    # Scale to fit in our height, unless this would take us over width
-    size = sketch.sketch.bounding_box().size
-    scale = height / size.Y
-    # actual_w = min(scale * size.X, maxsize)
-    # scale = actual_w / size.X
-
-    return sketch.sketch.scale(scale)
-
-
-_FRAGMENTS = {
-    "hexhead": _fragment_hexhead,
-    "bolt": _fragment_bolt,
-    "washer": _fragment_washer,
-    "hexnut": _fragment_hexnut,
-    "nut": _fragment_hexnut,
-    "variable_resistor": _fragment_variable_resistor,
-}
-
-
 def _parse_fragment(fragment: str) -> float | Callable[[float, float], Sketch]:
     # If a numeric fragment, we just want a spacer
     try:
@@ -309,13 +55,13 @@ def _parse_fragment(fragment: str) -> float | Callable[[float, float], Sketch]:
     except ValueError:
         pass
     # If directly named, then just return the generator
-    if fragment in _FRAGMENTS:
-        return _FRAGMENTS[fragment]
+    if fragment in fragments.FRAGMENTS:
+        return fragments.FRAGMENTS[fragment]
     name, argstr = re.match(r"(.+?)(?:\((.*)\))?$", fragment).groups()
     args = argstr.split(",") if argstr else []
-    if name not in _FRAGMENTS:
+    if name not in fragments.FRAGMENTS:
         raise RuntimeError(f"Unknown fragment class: {name}")
-    return functools.partial(_FRAGMENTS[name], *args)
+    return functools.partial(fragments.FRAGMENTS[name], *args)
 
 
 def split_linespec_string(
@@ -459,16 +205,22 @@ def make_text_label(
 def generate_single_label(width: int, divisions: int, labels: list[str]) -> Part:
     labels = [x.replace("\\n", "\n") for x in labels]
 
-    per_bin_width = (42 * width - 4.2 - 5.5) / max(divisions, 1)
-    _leftmost_label = -(per_bin_width * divisions) / 2 + per_bin_width / 2
-
     with BuildPart() as part:
-        add(make_label_body(width_u=width))
+        label_body = pred.body(width_u=width)
+        add(label_body.part)
+
+        per_bin_width = label_body.area.X / max(divisions, 1)
+        _leftmost_label = -(per_bin_width * divisions) / 2 + per_bin_width / 2
+
         if divisions:
             with BuildSketch() as _sketch:
                 for i, label in zip(range(divisions), labels):
                     with Locations([(_leftmost_label + per_bin_width * i, 0)]):
-                        add(make_text_label(label, per_bin_width))
+                        add(
+                            make_text_label(
+                                label, per_bin_width, maxheight=label_body.area.Y
+                            )
+                        )
 
             extrude(amount=0.4)
     return part.part
@@ -476,7 +228,13 @@ def generate_single_label(width: int, divisions: int, labels: list[str]) -> Part
 
 def run(argv: list[str] | None = None):
     parser = ArgumentParser(description="Generate pred-style gridfinity bin labels")
-    parser.add_argument("width", help="Label width, in units", metavar="WIDTH_U")
+    parser.add_argument(
+        "-w",
+        "--width",
+        help="Label width, in gridfinity units. Default: %(default)s",
+        metavar="WIDTH_U",
+        default="1",
+    )
     parser.add_argument("labels", nargs="*", metavar="LABEL")
     parser.add_argument(
         "-d",
