@@ -35,6 +35,10 @@ def fragment(*names):
     return _wrapped
 
 
+class Fragment:
+    pass
+
+
 @fragment("hexhead")
 def _fragment_hexhead(height: float, _maxsize: float) -> Sketch:
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
