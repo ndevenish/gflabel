@@ -12,11 +12,14 @@ import build123d as bd
 # from build123d import *
 from build123d import (
     BuildPart,
-    Location,
     add,
     export_step,
+    extrude,
 )
 from ocp_vscode import Camera, set_defaults, show
+
+from .bases import pred
+from .label import RenderOptions, render_divided_label
 
 logger = logging.getLogger(__name__)
 
@@ -60,17 +63,23 @@ def run(argv: list[str] | None = None):
     )
     args = parser.parse_args(argv)
 
+    if not args.labels:
+        args.labels = ["A{hexnut}Another\nExample"]
+        # args.labels = ["{variable_resistor}"]
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
 
-    y = 0
     with BuildPart() as part:
         for labels in batched(args.labels, args.divisions):
-            # pred.body(args.width)
-            label = generate_single_label(args.width, args.divisions, labels)
-            label.location = Location((0, y))
-            add(label)
-            y -= 13
+            body = pred.body(args.width)
+            add(body.part)
+
+            add(
+                render_divided_label(
+                    labels, body.area, divisions=args.divisions, options=RenderOptions()
+                )
+            )
+            extrude(amount=0.4)
 
     if args.output.endswith(".stl"):
         bd.export_stl(part.part, args.output)

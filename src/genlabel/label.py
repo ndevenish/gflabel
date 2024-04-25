@@ -4,28 +4,19 @@ Code for rendering a label from a label definition.
 
 from __future__ import annotations
 
-import functools
 import logging
 import re
-from collections.abc import Callable, Sequence
 from typing import NamedTuple
 
 from build123d import (
-    BuildPart,
     BuildSketch,
-    FontStyle,
     Locations,
-    Mode,
-    Part,
     Sketch,
-    Text,
     Vector,
     add,
-    extrude,
 )
 
 from . import fragments
-from .bases import pred
 
 logger = logging.getLogger(__name__)
 
@@ -36,177 +27,94 @@ class RenderOptions(NamedTuple):
     line_spacing_mm: float = 0.1
 
 
-def _parse_fragment(fragment: str) -> float | Callable[[float, float], Sketch]:
-    # If a numeric fragment, we just want a spacer
-    try:
-        return float(fragment)
-    except ValueError:
-        pass
-    # If directly named, then just return the generator
-    if fragment in fragments.FRAGMENTS:
-        return fragments.FRAGMENTS[fragment]
-    name, argstr = re.match(r"(.+?)(?:\((.*)\))?$", fragment).groups()
-    args = argstr.split(",") if argstr else []
-    if name not in fragments.FRAGMENTS:
-        raise RuntimeError(f"Unknown fragment class: {name}")
-    return functools.partial(fragments.FRAGMENTS[name], *args)
-
-
-def split_linespec_string(
-    line: str,
-) -> Sequence[float | str | Callable[[float, float], Sketch]]:
-    parts = []
-    part: str
-    for part in re.split(r"((?<!{){[^{}]+})", line):
-        if part.startswith("{") and not part.startswith("{{") and part.endswith("}"):
-            parts.append(_parse_fragment(part[1:-1]))
-        else:
-            # Leading and trailing whitepace are split on their own
-            left_spaces = part[: len(part) - len(part.lstrip())]
-            if left_spaces:
-                parts.append(left_spaces)
-            part = part.lstrip()
-
-            part_stripped = part.strip()
-            if part_stripped:
-                parts.append(part_stripped)
-
-            if chars := len(part) - len(part_stripped):
-                parts.append(part[-chars:])
-    return parts
-
-
-@functools.lru_cache
-def _space_width(spacechar: str, height: float) -> float:
-    """Calculate the width of a space at a specific text height"""
-    w2 = (
-        Text(
-            f"a{spacechar}a",
-            height,
-            font="Futura",
-            font_style=FontStyle.BOLD,
-            mode=Mode.PRIVATE,
-        )
-        .bounding_box()
-        .size.X
-    )
-    wn = (
-        Text(
-            "aa",
-            height,
-            font="Futura",
-            font_style=FontStyle.BOLD,
-            mode=Mode.PRIVATE,
-        )
-        .bounding_box()
-        .size.X
-    )
-    return w2 - wn
-
-
-def make_line_label(spec: str, height: float, maxwidth: float) -> Sketch:
-    fragments: list[Sketch | float] = []
-    for part in split_linespec_string(spec):
-        if isinstance(part, str):
-            if part.isspace():
-                gap_width = sum(_space_width(x, height) for x in part)
-                fragments.append(gap_width)
-                maxwidth -= gap_width
-            else:
-                with BuildSketch(mode=Mode.PRIVATE):
-                    text = Text(
-                        part,
-                        height,
-                        font="Futura",
-                        font_style=FontStyle.BOLD,
-                    )
-                    fragments.append(text)
-                    maxwidth -= text.bounding_box().size.X
-        elif isinstance(part, float):
-            fragments.append(part)
-            maxwidth -= part
-        else:
-            created_part = part(height, maxwidth)
-            fragments.append(created_part)
-            maxwidth -= created_part.bounding_box().size.X
-
-    # Now, work out the width of all fragments
-    # width = sum(Sketch. for x in fragments)
-    width = sum(
-        x if isinstance(x, float) else x.bounding_box().size.X for x in fragments
-    )
-    # Now, build the output sketch centered
-    x = -width / 2
-    with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        for part in fragments:
-            if isinstance(part, float):
-                x += part
-                continue
-            part_width = part.bounding_box().size.X
-            with Locations((x + part_width / 2, 0)):
-                add(part)
-            x += part_width
-    return sketch.sketch
-
-
-def make_text_label(
-    spec: str, maxwidth: float, maxheight: float = 9.5, _rescaling: bool = False
-) -> Sketch:
-    LINE_SEPARATOR = 0
-    lines = spec.splitlines()
-    # Work out how high we have for a single line
-    height = (maxheight - LINE_SEPARATOR * (len(lines) - 1)) / len(lines)
-    with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        for i, line in enumerate(lines):
-            y = (maxheight / 2) - i * (height + LINE_SEPARATOR) - height / 2
-            with Locations([(0, y)]):
-                add(make_line_label(line, height, maxwidth))
-
-    scale_to_maxwidth = maxwidth / sketch.sketch.bounding_box().size.X
-    if scale_to_maxwidth < 0.99 and not _rescaling:
-        print(f"Rescaling as {scale_to_maxwidth}")
-        # We need to scale this down. Resort to adjusting the height and re-requesting.
-        second = make_text_label(
-            spec,
-            maxwidth,
-            maxheight=maxheight * scale_to_maxwidth * 0.95,
-            _rescaling=True,
-        )
-        # If this didn't help, then error
-        if (bbox_w := second.bounding_box().size.X) > maxwidth:
-            logger.warning(
-                'Warning: Could not fit label "%s" in box of width %.2f, got %.1f',
-                spec,
-                maxwidth,
-                bbox_w,
-            )
-        print(
-            f'Entry "{spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {maxwidth})'
-        )
-        return second
-    print(
-        f'Entry "{spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {maxwidth})'
-    )
-    return sketch.sketch
-
-
 def _spec_to_fragments(spec: str) -> list[fragments.Fragment]:
     """Convert a single line spec string to a list of renderable fragments."""
-    fragments = []
+    fragment_list = []
     for part in RE_FRAGMENT.split(spec):
-        if part.startwith("{") and not part.startswith("{") and part.endswith("}"):
+        if part.startswith("{") and not part.startswith("{{") and part.endswith("}"):
             # We have a special fragment. Find and instantiate it.
-            pass
+            fragment_list.append(fragments.fragment_from_spec(part[1:-1]))
         else:
             # We have text. Build123d Text object doesn't handle leading/
             # trailing spaces, so let's split them out here and put in
             # explicit whitespace fragments
-            pass
+            left_spaces = part[: len(part) - len(part.lstrip())]
+            if left_spaces:
+                fragment_list.append(fragments.WhitespaceFragment(left_spaces))
+            part = part.lstrip()
+
+            part_stripped = part.strip()
+            if part_stripped:
+                fragment_list.append(fragments.TextFragment(part_stripped))
+
+            if chars := len(part) - len(part_stripped):
+                fragment_list.append(fragments.WhitespaceFragment(part[-chars:]))
+    return fragment_list
 
 
 class LabelRenderer:
     def __init__(self, options: RenderOptions):
         self.opts = options
+
+    def _do_multiline_render(
+        self, spec: str, area: Vector, is_rescaling: bool = False
+    ) -> Sketch:
+        """Label render function, with ability to recurse."""
+        lines = spec.splitlines()
+
+        if not lines:
+            raise ValueError("Asked to render empty label")
+
+        row_height = (area.Y - (self.opts.line_spacing_mm * (len(lines) - 1))) / len(
+            lines
+        )
+
+        with BuildSketch() as sketch:
+            # Render each line onto the sketch separately
+            for n, line in enumerate(lines):
+                # Calculate the y of the line center
+                render_y = (
+                    area.Y / 2
+                    - (row_height + self.opts.line_spacing_mm) * n
+                    - row_height / 2
+                )
+                print(f"Rendering line {n} ({line}) at {render_y})")
+                with Locations([(0, render_y)]):
+                    add(self._render_single_line(line, Vector(X=area.X, Y=row_height)))
+
+        scale_to_maxwidth = area.X / sketch.sketch.bounding_box().size.X
+
+        if scale_to_maxwidth < 0.99 and not is_rescaling:
+            print(f"Rescaling as {scale_to_maxwidth}")
+            # We need to scale this down. Resort to adjusting the height and re-requesting.
+            # second = make_text_label(
+            #     spec,
+            #     maxwidth,
+            #     maxheight=maxheight * scale_to_maxwidth * 0.95,
+            #     _rescaling=True,
+            # )
+            second_try = self._do_multiline_render(
+                spec,
+                Vector(X=area.X, Y=area.Y * scale_to_maxwidth * 0.95),
+                is_rescaling=True,
+            )
+            # If this didn't help, then error
+            if (bbox_w := second_try.bounding_box().size.X) > area.X:
+                logger.warning(
+                    'Warning: Could not fit label "%s" in box of width %.2f, got %.1f',
+                    spec,
+                    area.X,
+                    bbox_w,
+                )
+            print(
+                f'Entry "{spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {area.X})'
+            )
+            return second_try
+        print(
+            f'Entry "{spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {area.X})'
+        )
+
+        return sketch.sketch
 
     def render(self, spec: str, area: Vector) -> Sketch:
         """
@@ -220,55 +128,92 @@ class LabelRenderer:
             A rendered Sketch object with the label contents, centered on
             the origin.
         """
-        lines = spec.splitlines()
+        return self._do_multiline_render(spec, area)
 
-        if not lines:
-            raise ValueError("Asked to render empty label")
-
-        row_height = area.Y - (self.opts.line_spacing_mm * (len(lines) - 1)) / len(
-            lines
-        )
-
-        with BuildSketch() as sketch:
-            # Render each line onto the sketch separately
-            for n, line in enumerate(lines):
-                # Calculate the y of the line center
-                render_y = (
-                    area.Y / 2
-                    - (row_height + self.opts.line_spacing_mm) * n
-                    - row_height / 2
-                )
-                with Locations([(0, render_y)]):
-                    add(self._render_single_line(line, Vector(x=area.X, y=row_height)))
-
-        return sketch.sketch
-
-    def _render_single_line(self, line: str, area: Vector):
+    def _render_single_line(self, line: str, area: Vector) -> Sketch:
         """
         Render a single line of a labelspec.
         """
         # Firstly, split the line into a set of fragment objects
+        frags = _spec_to_fragments(line)
+
+        rendered: dict[fragments.Fragment, Sketch]
+        rendered = {
+            f: f.render(area.Y, area.X, self.opts)
+            for f in frags
+            if not f.variable_width
+        }
+        # Work out what we have left to give to the variable labels
+        remaining_area = area.X - sum(
+            x.bounding_box().size.X for x in rendered.values()
+        )
+        count_variable = len(frags) - len(rendered)
+        # For now, very dumb algorithm: Each variable fragment gets w/N.
+        # but we recalculate after each render.
+        for frag in sorted(
+            [x for x in frags if x.variable_width],
+            key=lambda x: x.priority,
+            reverse=True,
+        ):
+            render = frag.render(
+                area.Y,
+                max(remaining_area / count_variable, frag.min_width(area.Y)),
+                self.opts,
+            )
+            count_variable -= 1
+            remaining_area -= render.bounding_box().size.X
+
+        # Calculate the total width
+        total_width = sum(x.bounding_box().size.X for x in rendered.values())
+        if total_width > area.X:
+            logger.warning("Overfull Hbox: Label is wider than available area")
+
+        # Assemble these onto the target
+        with BuildSketch() as sketch:
+            x = -total_width / 2
+            for fragment, frag_sketch in [(x, rendered[x]) for x in frags]:
+                fragment_width = frag_sketch.bounding_box().size.X
+                with Locations((x + fragment_width / 2, 0)):
+                    if fragment.visible:
+                        add(frag_sketch)
+                x += fragment_width
+
+        return sketch.sketch
 
 
-def generate_single_label(width: int, divisions: int, labels: list[str]) -> Part:
-    labels = [x.replace("\\n", "\n") for x in labels]
+def render_divided_label(
+    labels: str, area: Vector, divisions: int, options: RenderOptions
+) -> Sketch:
+    area_per_label = Vector(area.X / divisions, area.Y)
+    leftmost_label_x = -area.X / 2 + area_per_label.X / 2
+    renderer = LabelRenderer(options)
+    with BuildSketch() as sketch:
+        for i, label in enumerate(labels):
+            with Locations([(leftmost_label_x + i * area_per_label.X, 0)]):
+                add(renderer.render(label, area_per_label))
 
-    with BuildPart() as part:
-        label_body = pred.body(width_u=width)
-        add(label_body.part)
+    return sketch.sketch
 
-        per_bin_width = label_body.area.X / max(divisions, 1)
-        _leftmost_label = -(per_bin_width * divisions) / 2 + per_bin_width / 2
 
-        if divisions:
-            with BuildSketch() as _sketch:
-                for i, label in zip(range(divisions), labels):
-                    with Locations([(_leftmost_label + per_bin_width * i, 0)]):
-                        add(
-                            make_text_label(
-                                label, per_bin_width, maxheight=label_body.area.Y
-                            )
-                        )
+# def generate_single_label(width: int, divisions: int, labels: list[str]) -> Part:
+#     labels = [x.replace("\\n", "\n") for x in labels]
 
-            extrude(amount=0.4)
-    return part.part
+#     with BuildPart() as part:
+#         label_body = pred.body(width_u=width)
+#         add(label_body.part)
+
+#         per_bin_width = label_body.area.X / max(divisions, 1)
+#         _leftmost_label = -(per_bin_width * divisions) / 2 + per_bin_width / 2
+
+#         if divisions:
+#             with BuildSketch() as _sketch:
+#                 for i, label in zip(range(divisions), labels):
+#                     with Locations([(_leftmost_label + per_bin_width * i, 0)]):
+#                         add(
+#                             make_text_label(
+#                                 label, per_bin_width, maxheight=label_body.area.Y
+#                             )
+#                         )
+
+#             extrude(amount=0.4)
+#     return part.part

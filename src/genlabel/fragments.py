@@ -1,42 +1,186 @@
 from __future__ import annotations
 
+import functools
 import logging
+import re
+from abc import ABCMeta, abstractmethod
+from collections.abc import Callable
 from math import cos, pi, radians, sin, tan
+from typing import Any, Type
 
 from build123d import (
     Axis,
     BuildLine,
     BuildSketch,
     Circle,
+    FontStyle,
     Mode,
     Plane,
     Polyline,
     RegularPolygon,
     Sketch,
+    Text,
     add,
     make_face,
     mirror,
 )
 
 logger = logging.getLogger(__name__)
+RE_FRAGMENT = re.compile(r"(.+?)(?:\((.*)\))?$")
 
-FRAGMENTS = {}
+FRAGMENTS: dict[str, Type[Fragment] | Callable[..., Fragment]] = {}
 
 
-def fragment(*names):
+def fragment_from_spec(spec: str) -> Fragment:
+    # If the fragment is just a number, this is distance to space out
+    try:
+        value = float(spec)
+    except ValueError:
+        pass
+    else:
+        return SpacerFragment(value)
+
+    # Is a fragment name, optionally with arguments
+    match = RE_FRAGMENT.match(spec)
+    assert match
+    name, args = match.groups()
+    args = args or []
+    if name not in FRAGMENTS:
+        raise RuntimeError(f"Unknown fragment class: {name}")
+    return FRAGMENTS[name](*args)
+
+
+def fragment(*names: str):
     """Register a label fragment generator"""
 
-    def _wrapped(fn):
+    def _wrapped(
+        fn: Type[Fragment] | Callable[[float, float], Sketch],
+    ) -> Type[Fragment] | Callable[[float, float], Sketch]:
         for name in names:
-            print(f"Registering fragment {name} = {fn}")
-            FRAGMENTS[name] = fn
+            logger.debug(f"Registering fragment {name}")
+            if not isinstance(fn, Fragment) and callable(fn):
+                logger.debug(f"Wrapping fragment function {fn}")
+
+                # We can have callable functions
+                # class FnWrapper(Fragment):
+                #     def render(
+                #         self, height: float, maxsize: float, options: Any
+                #     ) -> Sketch:
+                #         return orig_fn(height, maxsize)
+                FRAGMENTS[name] = lambda *args: FunctionalFragment(fn, *args)
+            else:
+                FRAGMENTS[name] = fn
         return fn
 
     return _wrapped
 
 
-class Fragment:
-    pass
+class Fragment(metaclass=ABCMeta):
+    # Is this a fixed or variable-width fragment?
+    variable_width = False
+
+    # If variable width, higher priority fragments will be rendered first
+    priority: float = 1
+
+    # If this fragment is visible. If not visible, rendered sketch will
+    # indicate bounding box only, but should never be added.
+    visible = True
+
+    def __init__(self, *args: list[Any]):
+        if args:
+            raise ValueError("Not all fragment arguments handled")
+
+    # If this fragment is variable, what's the smallest it can go?
+    def min_width(self, height: float) -> float:
+        """If this fragment is variable, what's the smallest it can go?"""
+        if self.variable_width:
+            raise NotImplementedError(
+                f"min_width not implemented for variable width object '{type(self).__name__}'"
+            )
+        return 0
+
+    @abstractmethod
+    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+        pass
+
+
+class FunctionalFragment(Fragment):
+    """Simple fragment for registering uncomplicated fragments"""
+
+    def __init__(self, fn: Callable[[float, float], Sketch], *args):
+        assert not args
+        self.fn = fn
+
+    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+        return self.fn(height, maxsize)
+
+
+class SpacerFragment(Fragment):
+    visible = False
+
+    def __init__(self, distance: float, *args):
+        super().__init__(*args)
+        self.distance = distance
+
+    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+        raise NotImplementedError()
+
+
+class TextFragment(Fragment):
+    def __init__(self, text: str):
+        self.text = text
+
+    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+        with BuildSketch() as sketch:
+            Text(
+                self.text,
+                height,
+                font="Futura",
+                font_style=FontStyle.BOLD,
+            )
+        return sketch.sketch
+
+
+@functools.lru_cache
+def _whitespace_width(spacechar: str, height: float) -> float:
+    """Calculate the width of a space at a specific text height"""
+    w2 = (
+        Text(
+            f"a{spacechar}a",
+            height,
+            font="Futura",
+            font_style=FontStyle.BOLD,
+            mode=Mode.PRIVATE,
+        )
+        .bounding_box()
+        .size.X
+    )
+    wn = (
+        Text(
+            "aa",
+            height,
+            font="Futura",
+            font_style=FontStyle.BOLD,
+            mode=Mode.PRIVATE,
+        )
+        .bounding_box()
+        .size.X
+    )
+    return w2 - wn
+
+
+class WhitespaceFragment(Fragment):
+    visible = False
+
+    def __init__(self, whitespace: str):
+        if not whitespace.isspace():
+            raise ValueError(
+                f"Whitespace fragment can only contain whitespace, got {whitespace!r}"
+            )
+        self.whitespace = whitespace
+
+    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+        raise NotImplementedError
 
 
 @fragment("hexhead")
