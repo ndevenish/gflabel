@@ -56,6 +56,20 @@ class LabelRenderer:
     def __init__(self, options: RenderOptions):
         self.opts = options
 
+    def render(self, spec: str, area: Vector) -> Sketch:
+        """
+        Given a specification string, render a single label.
+
+        Args:
+            spec: The string representing the label.
+            area: The width and height the label should be confined to.
+
+        Returns:
+            A rendered Sketch object with the label contents, centered on
+            the origin.
+        """
+        return self._do_multiline_render(spec, area)
+
     def _do_multiline_render(
         self, spec: str, area: Vector, is_rescaling: bool = False
     ) -> Sketch:
@@ -116,20 +130,6 @@ class LabelRenderer:
 
         return sketch.sketch
 
-    def render(self, spec: str, area: Vector) -> Sketch:
-        """
-        Given a specification string, render a single label.
-
-        Args:
-            spec: The string representing the label.
-            area: The width and height the label should be confined to.
-
-        Returns:
-            A rendered Sketch object with the label contents, centered on
-            the origin.
-        """
-        return self._do_multiline_render(spec, area)
-
     def _render_single_line(self, line: str, area: Vector) -> Sketch:
         """
         Render a single line of a labelspec.
@@ -184,6 +184,9 @@ class LabelRenderer:
 def render_divided_label(
     labels: str, area: Vector, divisions: int, options: RenderOptions
 ) -> Sketch:
+    """
+    Create a sketch for multiple labels fitted into a single area
+    """
     area_per_label = Vector(area.X / divisions, area.Y)
     leftmost_label_x = -area.X / 2 + area_per_label.X / 2
     renderer = LabelRenderer(options)
@@ -193,27 +196,3 @@ def render_divided_label(
                 add(renderer.render(label, area_per_label))
 
     return sketch.sketch
-
-
-# def generate_single_label(width: int, divisions: int, labels: list[str]) -> Part:
-#     labels = [x.replace("\\n", "\n") for x in labels]
-
-#     with BuildPart() as part:
-#         label_body = pred.body(width_u=width)
-#         add(label_body.part)
-
-#         per_bin_width = label_body.area.X / max(divisions, 1)
-#         _leftmost_label = -(per_bin_width * divisions) / 2 + per_bin_width / 2
-
-#         if divisions:
-#             with BuildSketch() as _sketch:
-#                 for i, label in zip(range(divisions), labels):
-#                     with Locations([(_leftmost_label + per_bin_width * i, 0)]):
-#                         add(
-#                             make_text_label(
-#                                 label, per_bin_width, maxheight=label_body.area.Y
-#                             )
-#                         )
-
-#             extrude(amount=0.4)
-#     return part.part
