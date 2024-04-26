@@ -25,6 +25,7 @@ RE_FRAGMENT = re.compile(r"((?<!{){[^{}]+})")
 
 class RenderOptions(NamedTuple):
     line_spacing_mm: float = 0.1
+    margin_mm: float = 0.4
 
 
 def _spec_to_fragments(spec: str) -> list[fragments.Fragment]:
@@ -143,11 +144,14 @@ class LabelRenderer:
             for f in frags
             if not f.variable_width
         }
+
         # Work out what we have left to give to the variable labels
         remaining_area = area.X - sum(
             x.bounding_box().size.X for x in rendered.values()
         )
         count_variable = len(frags) - len(rendered)
+
+        # Render the variable-width labels.
         # For now, very dumb algorithm: Each variable fragment gets w/N.
         # but we recalculate after each render.
         for frag in sorted(
@@ -188,6 +192,7 @@ def render_divided_label(
     """
     Create a sketch for multiple labels fitted into a single area
     """
+    area = Vector(X=area.X - options.margin_mm * 2, Y=area.Y - options.margin_mm * 2)
     area_per_label = Vector(area.X / divisions, area.Y)
     leftmost_label_x = -area.X / 2 + area_per_label.X / 2
     renderer = LabelRenderer(options)

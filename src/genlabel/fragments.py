@@ -17,6 +17,7 @@ from build123d import (
     Mode,
     Plane,
     Polyline,
+    Rectangle,
     RegularPolygon,
     Sketch,
     Text,
@@ -126,7 +127,9 @@ class SpacerFragment(Fragment):
         self.distance = distance
 
     def render(self, height: float, maxsize: float, options: Any) -> Sketch:
-        raise NotImplementedError()
+        with BuildSketch() as sketch:
+            Rectangle(self.distance, height)
+        return sketch.sketch
 
 
 class TextFragment(Fragment):
@@ -183,7 +186,9 @@ class WhitespaceFragment(Fragment):
         self.whitespace = whitespace
 
     def render(self, height: float, maxsize: float, options: Any) -> Sketch:
-        raise NotImplementedError
+        with BuildSketch() as sketch:
+            Rectangle(_whitespace_width(self.whitespace, height), height)
+        return sketch.sketch
 
 
 @fragment("hexhead")

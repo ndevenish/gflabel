@@ -69,7 +69,7 @@ def run(argv: list[str] | None = None):
     logging.getLogger("build123d").setLevel(logging.WARNING)
 
     if not args.labels:
-        args.labels = ["A{bolt(30)}"]  # "A{hexnut}Another\{bolt(10)}"]
+        args.labels = ["Slide {variable_resistor}"]  # "A{hexnut}Another\{bolt(10)}"]
         # args.labels = ["{variable_resistor}"]
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)

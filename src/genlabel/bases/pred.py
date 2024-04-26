@@ -112,4 +112,5 @@ def body(width_u: int, recessed: bool = True) -> LabelBase:
             *part.edges().group_by(Axis.Z)[0],
         ]
         fillet(fillet_edges, radius=0.2)
-    return LabelBase(part.part, Vector(width_u * 42 - 4.2 - 1.9 * 2, 10))
+
+    return LabelBase(part.part, Vector(width_u * 42 - 4.2 - 5.5, 10.5))
