@@ -73,6 +73,7 @@ def run(argv: list[str] | None = None):
         # args.labels = ["{variable_resistor}"]
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
+    args.labels = [x.replace("\\n", "\n") for x in args.labels]
 
     with BuildPart() as part:
         for labels in batched(args.labels, args.divisions):
