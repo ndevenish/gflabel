@@ -62,9 +62,14 @@ def run(argv: list[str] | None = None):
         default="label.step",
     )
     args = parser.parse_args(argv)
+    logging.basicConfig(
+        level=logging.DEBUG,
+    )
+    logging.getLogger("websockets").setLevel(logging.WARNING)
+    logging.getLogger("build123d").setLevel(logging.WARNING)
 
     if not args.labels:
-        args.labels = ["A{hexnut}Another\nExample"]
+        args.labels = ["A{bolt(30)}"]  # "A{hexnut}Another\{bolt(10)}"]
         # args.labels = ["{variable_resistor}"]
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
@@ -81,13 +86,14 @@ def run(argv: list[str] | None = None):
             )
             extrude(amount=0.4)
 
-    if args.output.endswith(".stl"):
-        bd.export_stl(part.part, args.output)
-    elif args.output.endswith(".step"):
-        export_step(part.part, args.output)
-    else:
-        print(f"Error: Do not understand output format '{args.output}'")
-
+    # if args.output.endswith(".stl"):
+    #     bd.export_stl(part.part, args.output)
+    # elif args.output.endswith(".step"):
+    #     export_step(part.part, args.output)
+    # else:
+    #     print(f"Error: Do not understand output format '{args.output}'")
+    bd.export_stl(part.part, "label.stl")
+    export_step(part.part, "label.step")
     show(part)
 
 

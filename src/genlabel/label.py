@@ -160,6 +160,7 @@ class LabelRenderer:
                 max(remaining_area / count_variable, frag.min_width(area.Y)),
                 self.opts,
             )
+            rendered[frag] = render
             count_variable -= 1
             remaining_area -= render.bounding_box().size.X
 

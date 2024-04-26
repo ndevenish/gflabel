@@ -44,7 +44,8 @@ def fragment_from_spec(spec: str) -> Fragment:
     match = RE_FRAGMENT.match(spec)
     assert match
     name, args = match.groups()
-    args = args or []
+    args = args.split(",") if args else []
+
     if name not in FRAGMENTS:
         raise RuntimeError(f"Unknown fragment class: {name}")
     return FRAGMENTS[name](*args)
@@ -58,7 +59,9 @@ def fragment(*names: str):
     ) -> Type[Fragment] | Callable[[float, float], Sketch]:
         for name in names:
             logger.debug(f"Registering fragment {name}")
-            if not isinstance(fn, Fragment) and callable(fn):
+            if name == "bolt":
+                print("Bolt")
+            if not isinstance(fn, type) and callable(fn):
                 logger.debug(f"Wrapping fragment function {fn}")
 
                 # We can have callable functions
@@ -208,73 +211,83 @@ def _fragment_washer(height: float, _maxsize: float) -> Sketch:
 
 
 @fragment("bolt")
-def _fragment_bolt(length: float | str, height: float, maxsize: float) -> Sketch:
-    length = float(length)
-    # line width: How thick the head and body are
-    lw = height / 2.25
-    # The half-width of the dividing split
-    half_split = 0.75
+class BoltFragment(Fragment):
+    variable_width = True
 
-    # Don't allow lengths smaller than lw
-    # length = max(length, lw * 2 + half_split)
-    maxsize = max(maxsize, lw * 2 + half_split * 2 + 0.1)
-    # Work out what the total length is, and if this is over max size
-    # then we need to cut the bolt
-    split_bolt = length + lw > maxsize
-    # Halfwidth distance
-    if split_bolt:
-        hw = maxsize / 2
-    else:
-        hw = (length + lw) / 2
+    def __init__(self, length: float, *args: list[Any]):
+        super().__init__(*args)
+        self.length = float(length)
 
-    if not split_bolt:
-        with BuildSketch(mode=Mode.PRIVATE) as sketch:
-            with BuildLine() as line:
-                Polyline(
-                    [
-                        (-hw, 0),
-                        (-hw, height / 2),
-                        (-hw + lw, height / 2),
-                        (-hw + lw, lw / 2),
-                        (hw, lw / 2),
-                        (hw, 0),
-                    ],
-                )
-                mirror(line.line, Plane.XZ)
-            make_face()
-    else:
-        # We need to split the bolt
-        with BuildSketch(mode=Mode.PRIVATE) as sketch:
-            x_shaft_midpoint = lw + (maxsize - lw) / 2 - hw
-            with BuildLine() as line:
-                Polyline(
-                    [
-                        (-hw, height / 2),
-                        (-hw + lw, height / 2),
-                        (-hw + lw, lw / 2),
-                        # Divider is halfway along the shaft
-                        (x_shaft_midpoint + lw / 2 - half_split, lw / 2),
-                        (x_shaft_midpoint - lw / 2 - half_split, -lw / 2),
-                        (-hw + lw, -lw / 2),
-                        (-hw + lw, -height / 2),
-                        (-hw, -height / 2),
-                    ],
-                    close=True,
-                )
-            make_face()
-            with BuildLine() as line:
-                Polyline(
-                    [
-                        # Divider is halfway along the shaft
-                        (x_shaft_midpoint + lw / 2 + half_split, lw / 2),
-                        (hw, lw / 2),
-                        (hw, -lw / 2),
-                        (x_shaft_midpoint - lw / 2 + half_split, -lw / 2),
-                    ],
-                    close=True,
-                )
-            make_face()
-    return sketch.sketch
+    def min_width(self, height: float) -> float:
+        return height
+
+    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+        length = self.length
+        # line width: How thick the head and body are
+        lw = height / 2.25
+        # The half-width of the dividing split
+        half_split = 0.75
+
+        # Don't allow lengths smaller than lw
+        # length = max(length, lw * 2 + half_split)
+        maxsize = max(maxsize, lw * 2 + half_split * 2 + 0.1)
+        # Work out what the total length is, and if this is over max size
+        # then we need to cut the bolt
+        split_bolt = length + lw > maxsize
+        # Halfwidth distance
+        if split_bolt:
+            hw = maxsize / 2
+        else:
+            hw = (length + lw) / 2
+
+        if not split_bolt:
+            with BuildSketch(mode=Mode.PRIVATE) as sketch:
+                with BuildLine() as line:
+                    Polyline(
+                        [
+                            (-hw, 0),
+                            (-hw, height / 2),
+                            (-hw + lw, height / 2),
+                            (-hw + lw, lw / 2),
+                            (hw, lw / 2),
+                            (hw, 0),
+                        ],
+                    )
+                    mirror(line.line, Plane.XZ)
+                make_face()
+        else:
+            # We need to split the bolt
+            with BuildSketch(mode=Mode.PRIVATE) as sketch:
+                x_shaft_midpoint = lw + (maxsize - lw) / 2 - hw
+                with BuildLine() as line:
+                    Polyline(
+                        [
+                            (-hw, height / 2),
+                            (-hw + lw, height / 2),
+                            (-hw + lw, lw / 2),
+                            # Divider is halfway along the shaft
+                            (x_shaft_midpoint + lw / 2 - half_split, lw / 2),
+                            (x_shaft_midpoint - lw / 2 - half_split, -lw / 2),
+                            (-hw + lw, -lw / 2),
+                            (-hw + lw, -height / 2),
+                            (-hw, -height / 2),
+                        ],
+                        close=True,
+                    )
+                make_face()
+                with BuildLine() as line:
+                    Polyline(
+                        [
+                            # Divider is halfway along the shaft
+                            (x_shaft_midpoint + lw / 2 + half_split, lw / 2),
+                            (hw, lw / 2),
+                            (hw, -lw / 2),
+                            (x_shaft_midpoint - lw / 2 + half_split, -lw / 2),
+                        ],
+                        close=True,
+                    )
+                make_face()
+        return sketch.sketch
 
 
 @fragment("variable_resistor")
