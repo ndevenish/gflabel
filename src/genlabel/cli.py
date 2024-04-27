@@ -18,7 +18,7 @@ from build123d import (
 )
 from ocp_vscode import Camera, set_defaults, show
 
-from .bases import pred
+from .bases import plain, pred
 from .label import RenderOptions, render_divided_label
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ def batched(iterable, n):
 
 def run(argv: list[str] | None = None):
     parser = ArgumentParser(description="Generate pred-style gridfinity bin labels")
+    parser.add_argument("base", choices=["pred", "plain"], default="plain")
     parser.add_argument(
         "-w",
         "--width",
@@ -77,7 +78,10 @@ def run(argv: list[str] | None = None):
 
     with BuildPart() as part:
         for labels in batched(args.labels, args.divisions):
-            body = pred.body(args.width)
+            if args.base == "pred":
+                body = pred.body(args.width)
+            else:
+                body = plain.body(args.width, 12)
             add(body.part)
 
             add(
