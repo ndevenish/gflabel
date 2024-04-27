@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from argparse import ArgumentParser
 from itertools import islice
 
@@ -17,17 +18,18 @@ from build123d import (
     export_step,
     extrude,
 )
-from ocp_vscode import Camera, set_defaults, show
 
 from .bases import plain, pred
 from .label import RenderOptions, render_divided_label
 
 logger = logging.getLogger(__name__)
 
-# logging.basicConfig(level=logging.DEBUG)
-set_defaults(reset_camera=Camera.CENTER)
+if "--vscode" in sys.argv:
+    from ocp_vscode import Camera, set_defaults, show
 
-common_args = ArgumentParser(add_help=False)
+    set_defaults(reset_camera=Camera.CENTER)
+
+# common_args = ArgumentParser(add_help=False)
 
 
 # Taken from Python 3.12 documentation.
@@ -49,13 +51,20 @@ def run(argv: list[str] | None = None):
         help="Label base to generate onto. [Default: %(default)s]",
     )
     parser.add_argument(
+        "--vscode",
+        help="Run in vscode_ocp mode, and show the label afterwards.",
+        action="store_true",
+    )
+    parser.add_argument(
         "-w",
         "--width",
         help="Label width, in gridfinity units. Default: %(default)s",
         metavar="WIDTH_U",
         default="1",
     )
-    parser.add_argument("labels", nargs="*", metavar="LABEL")
+    parser.add_argument(
+        "labels", nargs="*" if "vscode" in sys.argv else "+", metavar="LABEL"
+    )
     parser.add_argument(
         "-d",
         "--divisions",
@@ -101,9 +110,10 @@ def run(argv: list[str] | None = None):
     logging.getLogger("websockets").setLevel(logging.WARNING)
     logging.getLogger("build123d").setLevel(logging.WARNING)
 
+    # If running in VSCode mode, then we can hardcode a label here
     if not args.labels:
-        args.base = "pred"
         args.labels = ["M3×8{...}{webbolt(hex)}"]
+
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
     args.labels = [x.replace("\\n", "\n") for x in args.labels]
@@ -125,15 +135,17 @@ def run(argv: list[str] | None = None):
             )
             extrude(amount=0.4)
 
-    # if args.output.endswith(".stl"):
-    #     bd.export_stl(part.part, args.output)
-    # elif args.output.endswith(".step"):
-    #     export_step(part.part, args.output)
-    # else:
-    #     print(f"Error: Do not understand output format '{args.output}'")
-    bd.export_stl(part.part, "label.stl")
-    export_step(part.part, "label.step")
-    show(part)
+    if args.output.endswith(".stl"):
+        bd.export_stl(part.part, args.output)
+    elif args.output.endswith(".step"):
+        export_step(part.part, args.output)
+    else:
+        print(f"Error: Do not understand output format '{args.output}'")
+
+    if args.vscode:
+        bd.export_stl(part.part, "label.stl")
+        export_step(part.part, "label.step")
+        show(part)
 
 
 # _FRAGMENTS = {
