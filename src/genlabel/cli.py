@@ -14,6 +14,8 @@ import build123d as bd
 from build123d import (
     BuildPart,
     FontStyle,
+    Location,
+    Locations,
     add,
     export_step,
     extrude,
@@ -63,13 +65,14 @@ def run(argv: list[str] | None = None):
         default="1",
     )
     parser.add_argument(
-        "labels", nargs="*" if "vscode" in sys.argv else "+", metavar="LABEL"
+        "labels", nargs="*" if "--vscode" in sys.argv else "+", metavar="LABEL"
     )
     parser.add_argument(
         "-d",
         "--divisions",
-        help="How many areas to divide a single label into. If more labels that this are requested, multiple labels will be generated.",
+        help="How many areas to divide a single label into. If more labels that this are requested, multiple labels will be generated. Default: %(default)s.",
         type=int,
+        default=1,
     )
 
     parser.add_argument(
@@ -121,19 +124,23 @@ def run(argv: list[str] | None = None):
     options = RenderOptions.from_args(args)
     print(options)
     with BuildPart() as part:
+        y = 0
         for labels in batched(args.labels, args.divisions):
-            if args.base == "pred":
-                body = pred.body(args.width)
-            else:
-                body = plain.body(args.width, 12)
-            add(body.part)
+            with Locations([Location([0, y])]):
+                if args.base == "pred":
+                    body = pred.body(args.width)
+                else:
+                    body = plain.body(args.width, 12)
+                add(body.part)
 
-            add(
-                render_divided_label(
-                    labels, body.area, divisions=args.divisions, options=options
+                add(
+                    render_divided_label(
+                        labels, body.area, divisions=args.divisions, options=options
+                    )
                 )
-            )
-            extrude(amount=0.4)
+                extrude(amount=0.4)
+                y -= 14
+                # part.part.bounding_box().size.Y
 
     if args.output.endswith(".stl"):
         bd.export_stl(part.part, args.output)
