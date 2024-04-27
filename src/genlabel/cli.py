@@ -16,13 +16,15 @@ from build123d import (
     FontStyle,
     Location,
     Locations,
+    Mode,
     add,
     export_step,
     extrude,
 )
 
 from .bases import plain, pred
-from .label import RenderOptions, render_divided_label
+from .label import render_divided_label
+from .options import LabelStyle, RenderOptions
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +107,13 @@ def run(argv: list[str] | None = None):
         help="Output filename. [Default: %(default)s]",
         default="label.step",
     )
+    parser.add_argument(
+        "--style",
+        help="How the label contents are formed.",
+        choices=LabelStyle,
+        default=LabelStyle.EMBOSSED,
+        type=LabelStyle,
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -128,9 +137,12 @@ def run(argv: list[str] | None = None):
         for labels in batched(args.labels, args.divisions):
             with Locations([Location([0, y])]):
                 if args.base == "pred":
-                    body = pred.body(args.width)
+                    body = pred.body(
+                        args.width, recessed=args.style == LabelStyle.EMBOSSED
+                    )
                 else:
                     body = plain.body(args.width, 12)
+                y -= body.part.bounding_box().size.Y + 2
                 add(body.part)
 
                 add(
@@ -138,8 +150,13 @@ def run(argv: list[str] | None = None):
                         labels, body.area, divisions=args.divisions, options=options
                     )
                 )
-                extrude(amount=0.4)
-                y -= 14
+                extrude(
+                    amount=0.4,
+                    mode=(
+                        Mode.ADD if args.style == LabelStyle.EMBOSSED else Mode.SUBTRACT
+                    ),
+                )
+                # y -= 14
                 # part.part.bounding_box().size.Y
 
     if args.output.endswith(".stl"):

@@ -1,9 +1,24 @@
 from __future__ import annotations
 
 import argparse
+from enum import Enum, auto
 from typing import NamedTuple
 
 from build123d import FontStyle
+
+
+class LabelStyle(Enum):
+    EMBOSSED = auto()
+    DEBOSSED = auto()
+
+    @classmethod
+    def _missing_(cls, value):
+        for kind in cls:
+            if kind.name.lower() == value.lower():
+                return kind
+
+    def __str__(self):
+        return self.name.lower()
 
 
 class FontOptions(NamedTuple):
