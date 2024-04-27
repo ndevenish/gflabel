@@ -62,10 +62,17 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "-w",
         "--width",
-        help="Label width, in gridfinity units. Default: %(default)s",
-        metavar="WIDTH_U",
-        default="1",
+        help="Label width. If using a gridfinity standard base, then this is width in U. Otherwise, width in mm.",
+        metavar="WIDTH",
     )
+    parser.add_argument(
+        "--height",
+        help="Label height, in mm. Ignored for standardised label bases.",
+        metavar="HEIGHT",
+        default=12,
+        type=float,
+    )
+
     parser.add_argument(
         "labels", nargs="*" if "--vscode" in sys.argv else "+", metavar="LABEL"
     )
@@ -126,6 +133,12 @@ def run(argv: list[str] | None = None):
     if not args.labels:
         args.labels = ["{webbolt(pozi)}{...}M3×20"]
 
+    if not args.width:
+        if args.base == "pred":
+            args.width = "1"
+        elif args.base == "plain":
+            args.width = "42"
+
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
     args.labels = [x.replace("\\n", "\n") for x in args.labels]
@@ -141,7 +154,11 @@ def run(argv: list[str] | None = None):
                         args.width, recessed=args.style == LabelStyle.EMBOSSED
                     )
                 else:
-                    body = plain.body(args.width, 12)
+                    if args.width < 10:
+                        logger.warning(
+                            f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
+                        )
+                    body = plain.body(args.width, args.height)
                 y -= body.part.bounding_box().size.Y + 2
                 add(body.part)
 
@@ -156,8 +173,15 @@ def run(argv: list[str] | None = None):
                         Mode.ADD if args.style == LabelStyle.EMBOSSED else Mode.SUBTRACT
                     ),
                 )
-                # y -= 14
-                # part.part.bounding_box().size.Y
+
+    # visible, hidden = part.part.project_to_viewport((0, 0, 50), viewport_up=(0, 1, 0))
+    # max_dimension = max(*Compound(children=visible + hidden).bounding_box().size)
+    # exporter = ExportSVG(scale=100 / max_dimension)
+    # exporter.add_layer("Visible")
+    # # exporter.add_layer("Hidden", line_color=(99, 99, 99), line_type=LineType.ISO_DOT)
+    # exporter.add_shape(visible, layer="Visible")
+    # # exporter.add_shape(hidden, layer="Hidden")
+    # exporter.write("part_projection.svg")
 
     if args.output.endswith(".stl"):
         bd.export_stl(part.part, args.output)
@@ -170,28 +194,3 @@ def run(argv: list[str] | None = None):
         bd.export_stl(part.part, "label.stl")
         export_step(part.part, "label.step")
         show(part)
-
-
-# _FRAGMENTS = {
-#     "hexhead": _fragment_hexhead,
-#     "bolt": _fragment_bolt,
-#     "washer": _fragment_washer,
-#     "hexnut": _fragment_hexnut,
-#     "nut": _fragment_hexnut,
-#     "variable_resistor": _fragment_variable_resistor,
-# }
-
-if __name__ == "__main__":
-    divisions = 0
-    filename = "label.step"
-
-    labels = [
-        "{hexnut} M6 {hexnut}",
-        "{washer} M3",
-        "{hexhead} {bolt(12)}\nM3×12",
-        "{variable_resistor}",
-        "{hexhead} {bolt(30)}\nM4×30",
-    ]
-    # divisions = divisions or len(labels)
-
-    run([str(x) for x in [1, *labels, "--divisions", "1"]])

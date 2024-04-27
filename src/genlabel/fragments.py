@@ -509,3 +509,14 @@ def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch
             RegularPolygon(0.5, side_count=6)
 
     return sk.sketch.scale(2 * radius)
+
+
+@fragment("box")
+def _box_fragment(
+    height: float, maxsize: float, in_width: str, in_height: str | None = None
+) -> Sketch:
+    width = float(in_width)
+    height = float(in_height) if in_height else height
+    with BuildSketch() as sketch:
+        Rectangle(width, height)
+    return sketch.sketch
