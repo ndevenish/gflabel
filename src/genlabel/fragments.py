@@ -132,6 +132,23 @@ class SpacerFragment(Fragment):
         return sketch.sketch
 
 
+@fragment("...")
+class ExpandingFragment(Fragment):
+    """Always expands to fill available space"""
+
+    variable_width = True
+    priority = 0
+    visible = False
+
+    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+        with BuildSketch() as sketch:
+            Rectangle(maxsize, height)
+        return sketch.sketch
+
+    def min_width(self, height: float) -> float:
+        return 0
+
+
 class TextFragment(Fragment):
     def __init__(self, text: str):
         self.text = text
