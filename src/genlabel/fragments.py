@@ -116,11 +116,11 @@ class FunctionalFragment(Fragment):
     """Simple fragment for registering uncomplicated fragments"""
 
     def __init__(self, fn: Callable[[float, float], Sketch], *args):
-        assert not args
+        self.args = args
         self.fn = fn
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
-        return self.fn(height, maxsize)
+        return self.fn(height, maxsize, *self.args)
 
 
 class SpacerFragment(Fragment):
@@ -217,7 +217,20 @@ class WhitespaceFragment(Fragment):
 def _fragment_hexhead(height: float, _maxsize: float) -> Sketch:
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
         Circle(height / 2)
-        RegularPolygon(height / 2 * 0.6, side_count=6, mode=Mode.SUBTRACT)
+        add(head_shape("hex").scale(height * 0.6), mode=Mode.SUBTRACT)
+        # RegularPolygon(height / 2 * 0.6, side_count=6, mode=Mode.SUBTRACT)
+    return sketch.sketch
+
+
+@fragment("head")
+def _fragment_head(height: float, _maxsize: float, headshape: str) -> Sketch:
+    """A screw head, with specifiable head-shape."""
+    with BuildSketch(mode=Mode.PRIVATE) as sketch:
+        Circle(height / 2)
+        add(
+            head_shape(headshape, radius=(height / 2) * 0.7, outer_radius=height / 2),
+            mode=Mode.SUBTRACT,
+        )
     return sketch.sketch
 
 
@@ -376,32 +389,12 @@ class WebbBoltFragment(Fragment):
 
             # Now, do the heads
             for head in set(self.heads):
-                shape = self._headshape(head)
-                location = Location((width / 2 - head_w / 2, 0))
-                add(shape.scale(head_w * 0.9).locate(location), mode=Mode.SUBTRACT)
+                shape = head_shape(head, radius=head_w * 0.9 / 2)
+                # thread_depth/2 is just a "fudge" to slightly off-center it
+                location = Location((width / 2 - head_w / 2 - thread_depth / 2, 0))
+                add(shape.locate(location), mode=Mode.SUBTRACT)
 
         return sketch.sketch
-
-    def _headshape(self, shape: str) -> Sketch:
-        shape = shape.lower()
-        with BuildSketch(mode=Mode.PRIVATE) as sk:
-            if shape in {"phillips", "+"}:
-                Rectangle(1, 0.22)
-                Rectangle(0.2, 1)
-                Rectangle(0.4, 0.4, rotation=45)
-            elif shape in {"pozidrive", "posidrive", "posi", "pozi"}:
-                # Phillips head
-                Rectangle(1, 0.2)
-                Rectangle(0.2, 1)
-                Rectangle(0.4, 0.4, rotation=45)
-                Rectangle(1, 0.1, rotation=45)
-                Rectangle(1, 0.1, rotation=-45)
-            elif shape in {"slot", "-"}:
-                Rectangle(1, 0.2)
-            elif shape == "hex":
-                RegularPolygon(0.5, side_count=6)
-
-        return sk.sketch
 
 
 @fragment("variable_resistor")
@@ -482,3 +475,37 @@ def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
     # scale = actual_w / size.X
 
     return sketch.sketch.scale(scale)
+
+
+def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch:
+    """
+    Returns a shape representing a particular screw head.
+
+    Args:
+        shape: Name of the shape to generate.
+        radius: Radius to draw head to.
+        outer_radius:
+            Width to extend head shape if it cuts the whole head. e.g.
+            this is the width of the head circle to cut the edges.
+    """
+    shape = shape.lower()
+    cut_radius = max(radius, outer_radius) / radius
+    with BuildSketch(mode=Mode.PRIVATE) as sk:
+        if shape in {"phillips", "+"}:
+            # Phillips head
+            Rectangle(1, 0.22)
+            Rectangle(0.2, 1)
+            Rectangle(0.4, 0.4, rotation=45)
+        elif shape in {"pozidrive", "posidrive", "posi", "pozi"}:
+            # Pozidrive
+            Rectangle(1, 0.2)
+            Rectangle(0.2, 1)
+            Rectangle(0.4, 0.4, rotation=45)
+            Rectangle(1, 0.1, rotation=45)
+            Rectangle(1, 0.1, rotation=-45)
+        elif shape in {"slot", "-"}:
+            Rectangle(cut_radius, 0.2)
+        elif shape == "hex":
+            RegularPolygon(0.5, side_count=6)
+
+    return sk.sketch.scale(2 * radius)

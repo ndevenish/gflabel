@@ -96,7 +96,7 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "--margin",
         help="The margin area (in mm) to leave around the label contents. [Default: %(default)s]",
-        default=0.1,
+        default=0.2,
         type=float,
     )
     parser.add_argument(
@@ -115,7 +115,7 @@ def run(argv: list[str] | None = None):
 
     # If running in VSCode mode, then we can hardcode a label here
     if not args.labels:
-        args.labels = ["M3×8{...}{webbolt(hex)}"]
+        args.labels = ["{webbolt(pozi)}{...}M3×20"]
 
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
