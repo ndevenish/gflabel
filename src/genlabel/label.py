@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import NamedTuple
 
 from build123d import (
     BuildSketch,
@@ -17,15 +16,11 @@ from build123d import (
 )
 
 from . import fragments
+from .options import RenderOptions
 
 logger = logging.getLogger(__name__)
 
 RE_FRAGMENT = re.compile(r"((?<!{){[^{}]+})")
-
-
-class RenderOptions(NamedTuple):
-    line_spacing_mm: float = 0.1
-    margin_mm: float = 0.4
 
 
 def _spec_to_fragments(spec: str) -> list[fragments.Fragment]:

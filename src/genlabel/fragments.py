@@ -12,8 +12,10 @@ from build123d import (
     Axis,
     BuildLine,
     BuildSketch,
+    CenterArc,
     Circle,
-    FontStyle,
+    Line,
+    Location,
     Mode,
     Plane,
     Polyline,
@@ -25,6 +27,8 @@ from build123d import (
     make_face,
     mirror,
 )
+
+from .options import RenderOptions
 
 logger = logging.getLogger(__name__)
 RE_FRAGMENT = re.compile(r"(.+?)(?:\((.*)\))?$")
@@ -104,7 +108,7 @@ class Fragment(metaclass=ABCMeta):
         return 0
 
     @abstractmethod
-    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         pass
 
 
@@ -115,7 +119,7 @@ class FunctionalFragment(Fragment):
         assert not args
         self.fn = fn
 
-    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         return self.fn(height, maxsize)
 
 
@@ -126,7 +130,7 @@ class SpacerFragment(Fragment):
         super().__init__(*args)
         self.distance = distance
 
-    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         with BuildSketch() as sketch:
             Rectangle(self.distance, height)
         return sketch.sketch
@@ -140,7 +144,7 @@ class ExpandingFragment(Fragment):
     priority = 0
     visible = False
 
-    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         with BuildSketch() as sketch:
             Rectangle(maxsize, height)
         return sketch.sketch
@@ -153,26 +157,27 @@ class TextFragment(Fragment):
     def __init__(self, text: str):
         self.text = text
 
-    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         with BuildSketch() as sketch:
+            print(f"Rendering text {self.text} as {options.font}")
             Text(
                 self.text,
-                height,
-                font="Futura",
-                font_style=FontStyle.BOLD,
+                font_size=options.font.font_height_mm or height,
+                font=options.font.font,
+                font_style=options.font.font_style,
             )
         return sketch.sketch
 
 
 @functools.lru_cache
-def _whitespace_width(spacechar: str, height: float) -> float:
+def _whitespace_width(spacechar: str, height: float, options: RenderOptions) -> float:
     """Calculate the width of a space at a specific text height"""
     w2 = (
         Text(
             f"a{spacechar}a",
-            height,
-            font="Futura",
-            font_style=FontStyle.BOLD,
+            font_size=options.font.font_height_mm or height,
+            font=options.font.font,
+            font_style=options.font.font_style,
             mode=Mode.PRIVATE,
         )
         .bounding_box()
@@ -181,9 +186,9 @@ def _whitespace_width(spacechar: str, height: float) -> float:
     wn = (
         Text(
             "aa",
-            height,
-            font="Futura",
-            font_style=FontStyle.BOLD,
+            font_size=options.font.font_height_mm or height,
+            font=options.font.font,
+            font_style=options.font.font_style,
             mode=Mode.PRIVATE,
         )
         .bounding_box()
@@ -202,9 +207,9 @@ class WhitespaceFragment(Fragment):
             )
         self.whitespace = whitespace
 
-    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         with BuildSketch() as sketch:
-            Rectangle(_whitespace_width(self.whitespace, height), height)
+            Rectangle(_whitespace_width(self.whitespace, height, options), height)
         return sketch.sketch
 
 
@@ -243,7 +248,7 @@ class BoltFragment(Fragment):
     def min_width(self, height: float) -> float:
         return height
 
-    def render(self, height: float, maxsize: float, options: Any) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         length = self.length
         # line width: How thick the head and body are
         lw = height / 2.25
@@ -310,6 +315,93 @@ class BoltFragment(Fragment):
                     )
                 make_face()
         return sketch.sketch
+
+
+@fragment("webbolt")
+class WebbBoltFragment(Fragment):
+    def __init__(self, *heads: str):
+        self.heads = heads
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        # 12 mm high for 15 mm wide. Scale to this.
+        width = 15 / 12 * height
+        # Relative proportion of body:head
+        body_w = width / 2
+        # How many threads to have on the body
+        n_threads = 6
+        # How deep each thread profile should be
+        thread_depth = 0.5
+
+        # Calculated values
+        head_w = width - body_w
+        x_head = body_w - width / 2
+
+        x0 = -width / 2
+        # Make a zig-zag for the bolt head
+
+        thread_pitch = body_w / n_threads
+        thread_lines = []
+        thread_tip_height = height / 4 + thread_depth
+        for i in range(n_threads):
+            thread_lines.extend(
+                [
+                    (x0 + i * thread_pitch, thread_tip_height - thread_depth),
+                    (x0 + (i + 0.5) * thread_pitch, thread_tip_height),
+                    # (x0 + (i + 1) * thread_pitch, height / 4),
+                ]
+            )
+
+        with BuildSketch() as sketch:
+            with BuildLine() as line:
+                head_radius = 2
+                head_arc = CenterArc(
+                    (width / 2 - head_radius, height / 2 - head_radius),
+                    head_radius,
+                    0,
+                    90,
+                )
+                Polyline(
+                    [
+                        (x0, 0),
+                        *thread_lines,
+                        (x_head, thread_tip_height - thread_depth),
+                        (x_head, height / 2),
+                        head_arc @ 1,
+                    ]
+                )
+                Line([head_arc @ 0, (width / 2, 0)])
+
+                mirror(line.line, Plane.XZ)
+            make_face()
+
+            # Now, do the heads
+            for head in set(self.heads):
+                shape = self._headshape(head)
+                location = Location((width / 2 - head_w / 2, 0))
+                add(shape.scale(head_w * 0.9).locate(location), mode=Mode.SUBTRACT)
+
+        return sketch.sketch
+
+    def _headshape(self, shape: str) -> Sketch:
+        shape = shape.lower()
+        with BuildSketch(mode=Mode.PRIVATE) as sk:
+            if shape in {"phillips", "+"}:
+                Rectangle(1, 0.22)
+                Rectangle(0.2, 1)
+                Rectangle(0.4, 0.4, rotation=45)
+            elif shape in {"pozidrive", "posidrive", "posi", "pozi"}:
+                # Phillips head
+                Rectangle(1, 0.2)
+                Rectangle(0.2, 1)
+                Rectangle(0.4, 0.4, rotation=45)
+                Rectangle(1, 0.1, rotation=45)
+                Rectangle(1, 0.1, rotation=-45)
+            elif shape in {"slot", "-"}:
+                Rectangle(1, 0.2)
+            elif shape == "hex":
+                RegularPolygon(0.5, side_count=6)
+
+        return sk.sketch
 
 
 @fragment("variable_resistor")

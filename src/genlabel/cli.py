@@ -12,6 +12,7 @@ import build123d as bd
 # from build123d import *
 from build123d import (
     BuildPart,
+    FontStyle,
     add,
     export_step,
     extrude,
@@ -41,7 +42,12 @@ def batched(iterable, n):
 
 def run(argv: list[str] | None = None):
     parser = ArgumentParser(description="Generate pred-style gridfinity bin labels")
-    parser.add_argument("base", choices=["pred", "plain"], default="plain")
+    parser.add_argument(
+        "--base",
+        choices=["pred", "plain"],
+        default="pred",
+        help="Label base to generate onto. [Default: %(default)s]",
+    )
     parser.add_argument(
         "-w",
         "--width",
@@ -56,6 +62,31 @@ def run(argv: list[str] | None = None):
         help="How many areas to divide a single label into. If more labels that this are requested, multiple labels will be generated.",
         type=int,
     )
+
+    parser.add_argument(
+        "--font",
+        help="The font to use for rendering. [Default: %(default)s]",
+        type=str,
+        default="Futura",
+    )
+    parser.add_argument(
+        "--font-size",
+        help="The font size (in mm) to use for rendering. If unset, then the font will use as much vertical space as needed (that also fits within the horizontal area).",
+        type=float,
+    )
+    parser.add_argument(
+        "--font-style",
+        help="The font style use for rendering. [Default: %(default)s]",
+        choices=[x.name.lower() for x in FontStyle],
+        default="regular",
+        type=str,
+    )
+    parser.add_argument(
+        "--margin",
+        help="The margin area (in mm) to leave around the label contents. [Default: %(default)s]",
+        default=0.1,
+        type=float,
+    )
     parser.add_argument(
         "-o",
         "--output",
@@ -63,6 +94,7 @@ def run(argv: list[str] | None = None):
         default="label.step",
     )
     args = parser.parse_args(argv)
+
     logging.basicConfig(
         level=logging.DEBUG,
     )
@@ -70,12 +102,14 @@ def run(argv: list[str] | None = None):
     logging.getLogger("build123d").setLevel(logging.WARNING)
 
     if not args.labels:
-        args.labels = ["Slide {variable_resistor}"]  # "A{hexnut}Another\{bolt(10)}"]
-        # args.labels = ["{variable_resistor}"]
+        args.base = "pred"
+        args.labels = ["M3×8{...}{webbolt(hex)}"]
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
     args.labels = [x.replace("\\n", "\n") for x in args.labels]
 
+    options = RenderOptions.from_args(args)
+    print(options)
     with BuildPart() as part:
         for labels in batched(args.labels, args.divisions):
             if args.base == "pred":
@@ -86,7 +120,7 @@ def run(argv: list[str] | None = None):
 
             add(
                 render_divided_label(
-                    labels, body.area, divisions=args.divisions, options=RenderOptions()
+                    labels, body.area, divisions=args.divisions, options=options
                 )
             )
             extrude(amount=0.4)
