@@ -238,14 +238,16 @@ def _fragment_hexhead(height: float, _maxsize: float) -> Sketch:
 
 
 @fragment("head")
-def _fragment_head(height: float, _maxsize: float, headshape: str) -> Sketch:
+def _fragment_head(height: float, _maxsize: float, *headshapes: str) -> Sketch:
     """Screw head with specifiable head-shape."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
         Circle(height / 2)
-        add(
-            head_shape(headshape, radius=(height / 2) * 0.7, outer_radius=height / 2),
-            mode=Mode.SUBTRACT,
-        )
+        # Intersect all of the heads together
+        for head in headshapes:
+            add(
+                head_shape(head, radius=(height / 2) * 0.7, outer_radius=height / 2),
+                mode=Mode.SUBTRACT,
+            )
     return sketch.sketch
 
 
@@ -415,12 +417,19 @@ class WebbBoltFragment(Fragment):
                 mirror(line.line, Plane.XZ)
             make_face()
 
+            # thread_depth/2 is just a "fudge" to slightly off-center it
+            fudge = thread_depth / 2
+            location = Location((width / 2 - head_w / 2 - fudge, 0))
             # Now, do the heads
             for head in set(self.heads):
-                shape = head_shape(head, radius=head_w * 0.9 / 2)
-                # thread_depth/2 is just a "fudge" to slightly off-center it
-                location = Location((width / 2 - head_w / 2 - thread_depth / 2, 0))
-                add(shape.locate(location), mode=Mode.SUBTRACT)
+                add(
+                    head_shape(
+                        head,
+                        radius=head_w * 0.9 / 2,
+                        outer_radius=head_w / 2,
+                    ).locate(location),
+                    mode=Mode.SUBTRACT,
+                )
 
         return sketch.sketch
 
@@ -522,7 +531,7 @@ def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch
     with BuildSketch(mode=Mode.PRIVATE) as sk:
         if shape in {"phillips", "+"}:
             # Phillips head
-            Rectangle(1, 0.22)
+            Rectangle(1, 0.2)
             Rectangle(0.2, 1)
             Rectangle(0.4, 0.4, rotation=45)
         elif shape in {"pozidrive", "posidrive", "posi", "pozi"}:
@@ -536,6 +545,13 @@ def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch
             Rectangle(cut_radius, 0.2)
         elif shape == "hex":
             RegularPolygon(0.5, side_count=6)
+        elif shape == "phillipsslot":
+            # Phillips head
+            Rectangle(1, 0.2)
+            Rectangle(0.2, 1)
+            Rectangle(0.4, 0.4, rotation=45)
+            # And a larger slot
+            Rectangle(cut_radius, 0.2)
 
     return sk.sketch.scale(2 * radius)
 
