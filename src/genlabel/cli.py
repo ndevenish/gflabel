@@ -13,13 +13,19 @@ import build123d as bd
 # from build123d import *
 from build123d import (
     BuildPart,
+    ColorIndex,
+    Compound,
+    ExportSVG,
     FontStyle,
     Location,
     Locations,
     Mode,
+    Plane,
+    Vector,
     add,
     export_step,
     extrude,
+    section,
 )
 
 from .bases import plain, pred
@@ -50,7 +56,7 @@ def run(argv: list[str] | None = None):
     parser = ArgumentParser(description="Generate pred-style gridfinity bin labels")
     parser.add_argument(
         "--base",
-        choices=["pred", "plain"],
+        choices=["pred", "plain", "none"],
         default="pred",
         help="Label base to generate onto. [Default: %(default)s]",
     )
@@ -70,6 +76,13 @@ def run(argv: list[str] | None = None):
         help="Label height, in mm. Ignored for standardised label bases.",
         metavar="HEIGHT",
         default=12,
+        type=float,
+    )
+    parser.add_argument(
+        "--depth",
+        help="How high (or deep) the label extrusion is.",
+        metavar="DEPTH_MM",
+        default=0.4,
         type=float,
     )
 
@@ -129,6 +142,8 @@ def run(argv: list[str] | None = None):
     logging.getLogger("websockets").setLevel(logging.WARNING)
     logging.getLogger("build123d").setLevel(logging.WARNING)
 
+    assert not (args.base == "none" and args.style == LabelStyle.DEBOSSED)
+
     # If running in VSCode mode, then we can hardcode a label here
     if not args.labels:
         args.labels = ["{webbolt(pozi)}{...}M3×20"]
@@ -136,8 +151,8 @@ def run(argv: list[str] | None = None):
     if not args.width:
         if args.base == "pred":
             args.width = "1"
-        elif args.base == "plain":
-            args.width = "42"
+        else:
+            sys.exit(f"Error: Must specify width for label base '{args.base}'.")
 
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
@@ -153,40 +168,66 @@ def run(argv: list[str] | None = None):
                     body = pred.body(
                         args.width, recessed=args.style == LabelStyle.EMBOSSED
                     )
-                else:
+                elif args.base == "plain":
                     if args.width < 10:
                         logger.warning(
                             f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
                         )
                     body = plain.body(args.width, args.height)
-                y -= body.part.bounding_box().size.Y + 2
-                add(body.part)
+                else:
+                    body = None
+
+                if body:
+                    y -= body.part.bounding_box().size.Y + 2
+                    add(body.part)
+                    label_area = body.area
+                else:
+                    y -= args.height + 2
+                    label_area = Vector(X=args.width, Y=args.height)
 
                 add(
                     render_divided_label(
-                        labels, body.area, divisions=args.divisions, options=options
+                        labels, label_area, divisions=args.divisions, options=options
                     )
                 )
                 extrude(
-                    amount=0.4,
+                    amount=args.depth,
                     mode=(
                         Mode.ADD if args.style == LabelStyle.EMBOSSED else Mode.SUBTRACT
                     ),
                 )
 
-    # visible, hidden = part.part.project_to_viewport((0, 0, 50), viewport_up=(0, 1, 0))
-    # max_dimension = max(*Compound(children=visible + hidden).bounding_box().size)
-    # exporter = ExportSVG(scale=100 / max_dimension)
-    # exporter.add_layer("Visible")
-    # # exporter.add_layer("Hidden", line_color=(99, 99, 99), line_type=LineType.ISO_DOT)
-    # exporter.add_shape(visible, layer="Visible")
-    # # exporter.add_shape(hidden, layer="Hidden")
-    # exporter.write("part_projection.svg")
-
     if args.output.endswith(".stl"):
         bd.export_stl(part.part, args.output)
     elif args.output.endswith(".step"):
         export_step(part.part, args.output)
+    elif args.output.endswith(".svg"):
+        visible, _hidden = part.part.project_to_viewport(
+            (0, 0, 50), viewport_up=(0, 1, 0)
+        )
+        max_dimension = max(*Compound(children=visible + _hidden).bounding_box().size)
+
+        if args.base == "none":
+            print("Rendering from section")
+            lines = section(part.part, Plane.XY, height=args.depth / 2)
+            e = ExportSVG(scale=100 / max_dimension)
+            # max_dimension = max(*Compound(children=visible + _hidden).bounding_box().size)
+            e.add_layer(
+                "Visible",
+                fill_color=ColorIndex.YELLOW,
+                line_color=ColorIndex.BLACK,
+                line_weight=0.4,
+            )
+            e.add_shape(lines, layer="Visible")
+            e.write(args.output)
+        else:
+            exporter = ExportSVG(scale=100 / max_dimension)
+            exporter.add_layer("Visible", fill_color=ColorIndex.YELLOW)
+            # # exporter.add_layer("Hidden", line_color=(99, 99, 99), line_type=LineType.ISO_DOT)
+            exporter.add_shape(visible, layer="Visible")
+            # # exporter.add_shape(hidden, layer="Hidden")
+            exporter.write(args.output)
+
     else:
         print(f"Error: Do not understand output format '{args.output}'")
 
