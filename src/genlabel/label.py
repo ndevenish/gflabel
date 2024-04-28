@@ -14,6 +14,7 @@ from build123d import (
     Vector,
     add,
 )
+from rich import print
 
 from . import fragments
 from .options import RenderOptions
