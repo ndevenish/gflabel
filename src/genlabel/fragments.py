@@ -15,6 +15,7 @@ from build123d import (
     BuildSketch,
     CenterArc,
     Circle,
+    GridLocations,
     Line,
     Location,
     Mode,
@@ -28,6 +29,7 @@ from build123d import (
     Text,
     Triangle,
     add,
+    fillet,
     make_face,
     mirror,
 )
@@ -253,6 +255,43 @@ def _fragment_head(height: float, _maxsize: float, *headshapes: str) -> Sketch:
             mode=Mode.SUBTRACT,
         )
     return sketch.sketch
+
+
+@fragment("threaded_insert")
+def _fragment_insert(height: float, _maxsize: float) -> Sketch:
+    """Representation of a threaded insert."""
+    with BuildSketch() as sketch:
+        with BuildLine() as line:
+            Polyline(
+                [(-3, 0), (-3, 2.5), (-5, 2.5), (-5, 5), (0, 5)],
+            )
+            mirror(line.line, Plane.XZ)
+            mirror(line.line, Plane.YZ)
+            fillet(line.vertices(), radius=0.2)
+        make_face()
+
+        def Trap() -> Sketch:
+            """Generate the Trapezoid shape"""
+            with BuildSketch(mode=Mode.PRIVATE) as sketch:
+                with BuildLine() as _line:
+                    Polyline(
+                        [
+                            (-1.074, 0.65),
+                            (-0.226, 0.65),
+                            (1.074, -0.65),
+                            (0.226, -0.65),
+                        ],
+                        close=True,
+                    )
+                make_face()
+            return sketch.sketch
+
+        with GridLocations(1.625, 7.5, 5, 2):
+            trapz = Trap()
+            add(trapz, mode=Mode.SUBTRACT)
+
+    scale = height / 10
+    return sketch.sketch.scale(scale)
 
 
 @fragment("hexnut", "nut")
