@@ -32,7 +32,7 @@ from build123d import (
 )
 
 from . import fragments
-from .bases import plain, pred
+from .bases import plain, pred, webb
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
 
@@ -82,7 +82,7 @@ def run(argv: list[str] | None = None):
     parser = ArgumentParser(description="Generate pred-style gridfinity bin labels")
     parser.add_argument(
         "--base",
-        choices=["pred", "plain", "none"],
+        choices=["pred", "plain", "none", "webb"],
         default="pred",
         help="Label base to generate onto. [Default: %(default)s]",
     )
@@ -180,7 +180,7 @@ def run(argv: list[str] | None = None):
         args.labels = ["{webbolt(pozi)}{...}M3×20"]
 
     if not args.width:
-        if args.base == "pred":
+        if args.base in {"pred", "webb"}:
             args.width = "1"
         else:
             sys.exit(f"Error: Must specify width for label base '{args.base}'.")
@@ -205,6 +205,8 @@ def run(argv: list[str] | None = None):
                             f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
                         )
                     body = plain.body(args.width, args.height)
+                elif args.base == "webb":
+                    body = webb.body()
                 else:
                     body = None
 
