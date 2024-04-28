@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
 from argparse import ArgumentParser
 from itertools import islice
 
 import build123d as bd
+import rich
+import rich.table
 
 # from build123d import *
 from build123d import (
@@ -28,6 +31,7 @@ from build123d import (
     section,
 )
 
+from . import fragments
 from .bases import plain, pred
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
@@ -50,6 +54,28 @@ def batched(iterable, n):
     it = iter(iterable)
     while batch := tuple(islice(it, n)):
         yield batch
+
+
+class ListFragmentsAction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super().__init__(option_strings, dest, nargs=0, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        table = rich.table.Table("NAMES", "DESCRIPTION")
+        table.add_row
+
+        frags = fragments.fragment_description_table()
+        multiline = [x for x in frags if len(x.description.splitlines()) > 1]
+
+        for frag in multiline:
+            table.add_row(", ".join(frag.names), frag.description, end_section=True)
+        for frag in [x for x in frags if x not in multiline]:
+            table.add_row(", ".join(frag.names), frag.description)
+
+        rich.print(table)
+        sys.exit(0)
 
 
 def run(argv: list[str] | None = None):
@@ -133,6 +159,11 @@ def run(argv: list[str] | None = None):
         choices=LabelStyle,
         default=LabelStyle.EMBOSSED,
         type=LabelStyle,
+    )
+    parser.add_argument(
+        "--list-fragments",
+        help="List all available fragments.",
+        action=ListFragmentsAction,
     )
     args = parser.parse_args(argv)
 

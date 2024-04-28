@@ -3,10 +3,11 @@ from __future__ import annotations
 import functools
 import logging
 import re
+import textwrap
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from math import cos, pi, radians, sin, tan
-from typing import Any, Type
+from typing import Any, NamedTuple, Type
 
 from build123d import (
     Axis,
@@ -62,22 +63,26 @@ def fragment(*names: str):
     def _wrapped(
         fn: Type[Fragment] | Callable[[float, float], Sketch],
     ) -> Type[Fragment] | Callable[[float, float], Sketch]:
+        if not isinstance(fn, type) and callable(fn):
+            logger.debug(f"Wrapping fragment function {fn}")
+
+            # We can have callable functions
+            # class FnWrapper(Fragment):
+            #     def render(
+            #         self, height: float, maxsize: float, options: Any
+            #     ) -> Sketch:
+            #         return orig_fn(height, maxsize)
+            def fragment(*args):
+                return FunctionalFragment(fn, *args)
+
+            # fragment = lambda *args: FunctionalFragment(fn, *args)
+            fragment.__doc__ = fn.__doc__
+        else:
+            fragment = fn
+        # Now assign this in the name dict
         for name in names:
             logger.debug(f"Registering fragment {name}")
-            if name == "bolt":
-                print("Bolt")
-            if not isinstance(fn, type) and callable(fn):
-                logger.debug(f"Wrapping fragment function {fn}")
-
-                # We can have callable functions
-                # class FnWrapper(Fragment):
-                #     def render(
-                #         self, height: float, maxsize: float, options: Any
-                #     ) -> Sketch:
-                #         return orig_fn(height, maxsize)
-                FRAGMENTS[name] = lambda *args: FunctionalFragment(fn, *args)
-            else:
-                FRAGMENTS[name] = fn
+            FRAGMENTS[name] = fragment
         return fn
 
     return _wrapped
@@ -93,6 +98,9 @@ class Fragment(metaclass=ABCMeta):
     # If this fragment is visible. If not visible, rendered sketch will
     # indicate bounding box only, but should never be added.
     visible = True
+
+    # An example, or list of examples, demonstrating the fragment.
+    examples: list[str] | None = None
 
     def __init__(self, *args: list[Any]):
         if args:
@@ -126,6 +134,8 @@ class FunctionalFragment(Fragment):
 class SpacerFragment(Fragment):
     visible = False
 
+    examples = ["L{...}R\n{...}C{...}R"]
+
     def __init__(self, distance: float, *args):
         super().__init__(*args)
         self.distance = distance
@@ -138,7 +148,12 @@ class SpacerFragment(Fragment):
 
 @fragment("...")
 class ExpandingFragment(Fragment):
-    """Always expands to fill available space"""
+    """
+    Blank area that always expands to fill available space.
+
+    If specified multiple times, the areas will be balanced between
+    entries. This can be used to justify/align text.
+    """
 
     variable_width = True
     priority = 0
@@ -215,6 +230,7 @@ class WhitespaceFragment(Fragment):
 
 @fragment("hexhead")
 def _fragment_hexhead(height: float, _maxsize: float) -> Sketch:
+    """Circular screw head with a hexagonal drive. Same as 'head(hex)'."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
         Circle(height / 2)
         add(head_shape("hex").scale(height * 0.6), mode=Mode.SUBTRACT)
@@ -224,7 +240,7 @@ def _fragment_hexhead(height: float, _maxsize: float) -> Sketch:
 
 @fragment("head")
 def _fragment_head(height: float, _maxsize: float, headshape: str) -> Sketch:
-    """A screw head, with specifiable head-shape."""
+    """Screw head with specifiable head-shape."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
         Circle(height / 2)
         add(
@@ -236,6 +252,7 @@ def _fragment_head(height: float, _maxsize: float, headshape: str) -> Sketch:
 
 @fragment("hexnut", "nut")
 def _fragment_hexnut(height: float, _maxsize: float) -> Sketch:
+    """Hexagonal outer profile nut with circular cutout."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
         RegularPolygon(height / 2, side_count=6)
         Circle(height / 2 * 0.4, mode=Mode.SUBTRACT)
@@ -244,6 +261,7 @@ def _fragment_hexnut(height: float, _maxsize: float) -> Sketch:
 
 @fragment("washer")
 def _fragment_washer(height: float, _maxsize: float) -> Sketch:
+    """Circular washer with a circular hole."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
         Circle(height / 2)
         Circle(height / 2 * 0.4, mode=Mode.SUBTRACT)
@@ -252,6 +270,13 @@ def _fragment_washer(height: float, _maxsize: float) -> Sketch:
 
 @fragment("bolt")
 class BoltFragment(Fragment):
+    """
+    Variable length bolt, in the style of Printables pred-box labels.
+
+    If the requested bolt is longer than the available space, then the
+    bolt will be as large as possible with a broken thread.
+    """
+
     variable_width = True
 
     def __init__(self, length: float, *args: list[Any]):
@@ -332,6 +357,10 @@ class BoltFragment(Fragment):
 
 @fragment("webbolt")
 class WebbBoltFragment(Fragment):
+    """
+    Alternate bolt representation incorporating screw drive, with fixed length.
+    """
+
     def __init__(self, *heads: str):
         self.heads = heads
 
@@ -399,6 +428,7 @@ class WebbBoltFragment(Fragment):
 
 @fragment("variable_resistor")
 def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
+    """Electrical symbol of a variable resistor."""
     # symb = import_svg("symbols/variable_resistor.svg")
     t = 0.4 / 2
     w = 6.5
@@ -515,8 +545,54 @@ def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch
 def _box_fragment(
     height: float, maxsize: float, in_width: str, in_height: str | None = None
 ) -> Sketch:
+    """Arbitrary width, height centered box. If height is not specified, will expand to row height."""
     width = float(in_width)
     height = float(in_height) if in_height else height
     with BuildSketch() as sketch:
         Rectangle(width, height)
     return sketch.sketch
+
+
+class FragmentDescriptionRow(NamedTuple):
+    names: list[str]
+    description: str | None
+    examples: list[str]
+
+
+def fragment_description_table() -> list[FragmentDescriptionRow]:
+    """
+    Generate a collection of information about fragments
+
+    This can be used to e.g. generate fragment help, automatic
+    documentation etc.
+    """
+    descriptions: list[FragmentDescriptionRow] = []
+    known_as: dict[Fragment | Callable[..., Fragment], list[str]] = {}
+    # Invert the list of fragments, so that we have a list of names for each
+    for name, frag in FRAGMENTS.items():
+        known_as.setdefault(frag, []).append(name)
+    # Now handle each fragment separately
+    for fragment, names in known_as.items():
+        descriptions.append(
+            FragmentDescriptionRow(
+                names=sorted(names),
+                description=(
+                    textwrap.dedent(fragment.__doc__).strip()
+                    if fragment.__doc__
+                    else None
+                ),
+                examples=getattr(fragment, "examples", None) or [],
+            )
+        )
+    descriptions.append(
+        FragmentDescriptionRow(
+            names=["<number>"],
+            description="A gap of specific width, in mm.",
+            examples=["]{25.4}["],
+        )
+    )
+    return sorted(descriptions, key=lambda x: x.names[0])
+
+
+if __name__ == "__main__":
+    pass
