@@ -233,10 +233,10 @@ def run(argv: list[str] | None = None):
     elif args.output.endswith(".step"):
         export_step(part.part, args.output)
     elif args.output.endswith(".svg"):
-        visible, _hidden = part.part.project_to_viewport(
+        visible, hidden = part.part.project_to_viewport(
             (0, 0, 50), viewport_up=(0, 1, 0)
         )
-        max_dimension = max(*Compound(children=visible + _hidden).bounding_box().size)
+        max_dimension = max(*Compound(children=visible + hidden).bounding_box().size)
 
         if args.base == "none":
             print("Rendering from section")
@@ -254,9 +254,11 @@ def run(argv: list[str] | None = None):
         else:
             exporter = ExportSVG(scale=100 / max_dimension)
             exporter.add_layer("Visible", fill_color=ColorIndex.YELLOW)
-            # # exporter.add_layer("Hidden", line_color=(99, 99, 99), line_type=LineType.ISO_DOT)
+            # exporter.add_layer(
+            #     "Hidden", line_color=(99, 99, 99), line_type=LineType.ISO_DOT
+            # )
             exporter.add_shape(visible, layer="Visible")
-            # # exporter.add_shape(hidden, layer="Hidden")
+            # exporter.add_shape(hidden, layer="Hidden")
             exporter.write(args.output)
 
     else:

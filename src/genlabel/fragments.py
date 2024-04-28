@@ -552,10 +552,18 @@ def _box_fragment(
     return sketch.sketch
 
 
+# class FragmentExampleSettings(NamedTuple):
+#     base: str
+#     width: float
+#     height: float | None
+#     divisions : int
+
+
 class FragmentDescriptionRow(NamedTuple):
     names: list[str]
     description: str | None
     examples: list[str]
+    # example_style : FragmentExampleSettings
 
 
 def fragment_description_table() -> list[FragmentDescriptionRow]:
@@ -591,7 +599,3 @@ def fragment_description_table() -> list[FragmentDescriptionRow]:
         )
     )
     return sorted(descriptions, key=lambda x: x.names[0])
-
-
-if __name__ == "__main__":
-    pass
