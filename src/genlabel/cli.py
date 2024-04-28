@@ -143,8 +143,7 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--margin",
-        help="The margin area (in mm) to leave around the label contents. [Default: %(default)s]",
-        default=0.2,
+        help="The margin area (in mm) to leave around the label contents. Default is per-base.",
         type=float,
     )
     parser.add_argument(
@@ -185,6 +184,11 @@ def run(argv: list[str] | None = None):
         else:
             sys.exit(f"Error: Must specify width for label base '{args.base}'.")
 
+    if not args.margin:
+        if args.base == "webb":
+            args.margin = 0
+        else:
+            args.margin = 0.2
     args.width = int(args.width.rstrip("u"))
     args.divisions = args.divisions or len(args.labels)
     args.labels = [x.replace("\\n", "\n") for x in args.labels]
