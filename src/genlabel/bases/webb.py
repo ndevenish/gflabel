@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from build123d import (
-    Axis,
     BuildLine,
     BuildPart,
     BuildSketch,
     Mode,
     Plane,
     Polyline,
-    Rectangle,
+    RectangleRounded,
     Vector,
     extrude,
-    fillet,
     make_face,
 )
 
@@ -35,10 +33,9 @@ def body() -> LabelBase:
     depth = 1
     with BuildPart() as part:
         with BuildSketch():
-            Rectangle(width=width, height=height)
+            RectangleRounded(width=width, height=height, radius=0.5)
 
         extrude(amount=-depth)
-        fillet(part.edges().filter_by(Axis.Z), radius=0.5)
 
         # Plane.XZ
         with BuildSketch(Plane.XZ) as _sketch:
