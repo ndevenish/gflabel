@@ -7,7 +7,7 @@ import textwrap
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from math import cos, pi, radians, sin, tan
-from typing import Any, NamedTuple, Type
+from typing import Any, Iterable, NamedTuple, Type
 
 from build123d import (
     Axis,
@@ -19,11 +19,14 @@ from build123d import (
     Location,
     Mode,
     Plane,
+    PolarLocations,
     Polyline,
     Rectangle,
     RegularPolygon,
     Sketch,
+    SlotCenterToCenter,
     Text,
+    Triangle,
     add,
     make_face,
     mirror,
@@ -243,11 +246,12 @@ def _fragment_head(height: float, _maxsize: float, *headshapes: str) -> Sketch:
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
         Circle(height / 2)
         # Intersect all of the heads together
-        for head in headshapes:
-            add(
-                head_shape(head, radius=(height / 2) * 0.7, outer_radius=height / 2),
-                mode=Mode.SUBTRACT,
-            )
+        add(
+            compound_head_shape(
+                headshapes, radius=(height / 2) * 0.7, outer_radius=height / 2
+            ),
+            mode=Mode.SUBTRACT,
+        )
     return sketch.sketch
 
 
@@ -420,16 +424,14 @@ class WebbBoltFragment(Fragment):
             # thread_depth/2 is just a "fudge" to slightly off-center it
             fudge = thread_depth / 2
             location = Location((width / 2 - head_w / 2 - fudge, 0))
-            # Now, do the heads
-            for head in set(self.heads):
-                add(
-                    head_shape(
-                        head,
-                        radius=head_w * 0.9 / 2,
-                        outer_radius=head_w / 2,
-                    ).locate(location),
-                    mode=Mode.SUBTRACT,
-                )
+            add(
+                compound_head_shape(
+                    self.heads,
+                    radius=head_w * 0.9 / 2,
+                    outer_radius=head_w / 2,
+                ).locate(location),
+                mode=Mode.SUBTRACT,
+            )
 
         return sketch.sketch
 
@@ -526,6 +528,7 @@ def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch
             Width to extend head shape if it cuts the whole head. e.g.
             this is the width of the head circle to cut the edges.
     """
+    positive = False
     shape = shape.lower()
     cut_radius = max(radius, outer_radius) / radius
     with BuildSketch(mode=Mode.PRIVATE) as sk:
@@ -545,6 +548,9 @@ def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch
             Rectangle(cut_radius, 0.2)
         elif shape == "hex":
             RegularPolygon(0.5, side_count=6)
+        elif shape == "cross":
+            Rectangle(1, 0.2)
+            Rectangle(0.2, 1)
         elif shape == "phillipsslot":
             # Phillips head
             Rectangle(1, 0.2)
@@ -552,8 +558,43 @@ def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch
             Rectangle(0.4, 0.4, rotation=45)
             # And a larger slot
             Rectangle(cut_radius, 0.2)
+        elif shape == "square":
+            Rectangle(0.6, 0.6, rotation=45)
+        elif shape in {"triangle", "tri"}:
+            Triangle(a=0.95, b=0.95, c=0.95)
+        elif shape == "torx":
+            Circle(0.74 / 2)
+            with PolarLocations(0, 3):
+                SlotCenterToCenter(0.82, 0.19)
+            with PolarLocations(0.41, 6, start_angle=360 / 12):
+                Circle(0.11, mode=Mode.SUBTRACT)
+        elif shape == "security":
+            Circle(0.1)
+            positive = True
+        else:
+            raise ValueError(f"Unknown head type: {shape}")
 
-    return sk.sketch.scale(2 * radius)
+    sketch = sk.sketch.scale(2 * radius)
+    sketch.positive = positive
+    return sketch
+
+
+def compound_head_shape(
+    shapes: Iterable[str], radius: float = 1, outer_radius: float = 1
+) -> Sketch:
+    """Combine several head shapes into one"""
+    plus: list[Sketch] = []
+    minus: list[Sketch] = []
+    for shape in shapes:
+        sketch = head_shape(shape, radius=radius, outer_radius=outer_radius)
+        (minus if sketch.positive else plus).append(sketch)
+
+    with BuildSketch() as sketch:
+        for shape in plus:
+            add(shape)
+        for shape in minus:
+            add(shape, mode=Mode.SUBTRACT)
+    return sketch.sketch
 
 
 @fragment("box")
