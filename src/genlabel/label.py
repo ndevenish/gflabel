@@ -94,8 +94,14 @@ class LabelRenderer:
                     add(self._render_single_line(line, Vector(X=area.X, Y=row_height)))
 
         scale_to_maxwidth = area.X / sketch.sketch.bounding_box().size.X
-
-        if scale_to_maxwidth < 0.99 and not is_rescaling:
+        scale_to_maxheight = area.Y / sketch.sketch.bounding_box().size.Y
+        if scale_to_maxheight < 1:
+            print(
+                f"Vertical scale is too high for area ({scale_to_maxheight}); downscaling"
+            )
+        to_scale = min(scale_to_maxheight, scale_to_maxwidth, 1)
+        print(f"Got scale: {to_scale}")
+        if to_scale < 0.99 and not is_rescaling:
             print(f"Rescaling as {scale_to_maxwidth}")
             # We need to scale this down. Resort to adjusting the height and re-requesting.
             # second = make_text_label(
@@ -106,7 +112,7 @@ class LabelRenderer:
             # )
             second_try = self._do_multiline_render(
                 spec,
-                Vector(X=area.X, Y=area.Y * scale_to_maxwidth * 0.95),
+                Vector(X=area.X, Y=area.Y * to_scale * 0.95),
                 is_rescaling=True,
             )
             # If this didn't help, then error
