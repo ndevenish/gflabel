@@ -405,8 +405,19 @@ class WebbBoltFragment(Fragment):
     Alternate bolt representation incorporating screw drive, with fixed length.
     """
 
-    def __init__(self, *heads: str):
-        self.heads = heads
+    def __init__(self, *features: str):
+        alias_mapping = {
+            "countersink": "countersunk",
+            "tap": "tapping",
+            "tapped": "tapping",
+        }
+        # Map aliases to canonical names
+        feats = [x.lower() for x in features]
+        feats = [alias_mapping[x] if x in alias_mapping else x for x in feats]
+        # A list of all modifier options that aren't heads
+        mods = {"tapping", "countersunk", "pan", "round", "flip"}
+        self.heads = set(features) - mods
+        self.features = set(features) & mods
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         # 12 mm high for 15 mm wide. Scale to this.
@@ -423,11 +434,20 @@ class WebbBoltFragment(Fragment):
         x_head = body_w - width / 2
 
         x0 = -width / 2
-        # Make a zig-zag for the bolt head
 
         thread_pitch = body_w / n_threads
-        thread_lines = []
+        thread_lines: list[tuple[float, float]] = [(x0, 0)]
         thread_tip_height = height / 4 + thread_depth
+
+        if "tapping" in self.features:
+            thread_lines.append(
+                (x0 + thread_pitch * 2 - 0.2, thread_tip_height - thread_depth)
+            )
+            n_threads -= 2
+            # Just shift the X origin. Not neat, but works.
+            x0 += thread_pitch * 2
+
+        # Make a zig-zag for the bolt head
         for i in range(n_threads):
             thread_lines.extend(
                 [
@@ -448,7 +468,6 @@ class WebbBoltFragment(Fragment):
                 )
                 Polyline(
                     [
-                        (x0, 0),
                         *thread_lines,
                         (x_head, thread_tip_height - thread_depth),
                         (x_head, height / 2),
@@ -471,6 +490,9 @@ class WebbBoltFragment(Fragment):
                 ).locate(location),
                 mode=Mode.SUBTRACT,
             )
+
+        if "flip" in self.features:
+            return sketch.sketch.scale(-1)
 
         return sketch.sketch
 
