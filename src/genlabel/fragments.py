@@ -238,7 +238,7 @@ def _fragment_hexhead(height: float, _maxsize: float) -> Sketch:
     """Circular screw head with a hexagonal drive. Same as 'head(hex)'."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
         Circle(height / 2)
-        add(head_shape("hex").scale(height * 0.6), mode=Mode.SUBTRACT)
+        add(drive_shape("hex").scale(height * 0.6), mode=Mode.SUBTRACT)
         # RegularPolygon(height / 2 * 0.6, side_count=6, mode=Mode.SUBTRACT)
     return sketch.sketch
 
@@ -250,7 +250,7 @@ def _fragment_head(height: float, _maxsize: float, *headshapes: str) -> Sketch:
         Circle(height / 2)
         # Intersect all of the heads together
         add(
-            compound_head_shape(
+            compound_drive_shape(
                 headshapes, radius=(height / 2) * 0.7, outer_radius=height / 2
             ),
             mode=Mode.SUBTRACT,
@@ -313,8 +313,41 @@ def _fragment_washer(height: float, _maxsize: float) -> Sketch:
     return sketch.sketch
 
 
+class BoltBase(Fragment):
+    """Base class for handling common bolt/screw configuration"""
+
+    # The options for head shape
+    HEAD_SHAPES = {"countersunk", "pan", "round", "socket"}
+    # Other, non-drive features
+    MODIFIERS = {"tapping", "flip"}
+    # Other names that features can be known as, and what they map to
+    FEATURE_ALIAS = {
+        "countersink": "countersunk",
+        "tap": "tapping",
+        "tapped": "tapping",
+    }
+    DEFAULT_HEADSHAPE = "pan"
+
+    def __init__(self, *req_features: str):
+        # Lower case, remap names, convert to set
+        features = {self.FEATURE_ALIAS.get(x.lower(), x.lower()) for x in req_features}
+
+        requested_head_shapes = features & self.HEAD_SHAPES
+        if len(requested_head_shapes) > 1:
+            raise ValueError("More than one head shape specified")
+        self.headshape = next(iter(requested_head_shapes), self.DEFAULT_HEADSHAPE)
+        features -= {self.headshape}
+
+        # A list of all modifier options that aren't drives
+        self.modifiers = features & self.MODIFIERS
+        features -= self.MODIFIERS
+
+        # Drives is everything left
+        self.drives = features
+
+
 @fragment("bolt")
-class BoltFragment(Fragment):
+class BoltFragment(BoltBase):
     """
     Variable length bolt, in the style of Printables pred-box labels.
 
@@ -324,8 +357,8 @@ class BoltFragment(Fragment):
 
     variable_width = True
 
-    def __init__(self, length: float, *args: list[Any]):
-        super().__init__(*args)
+    def __init__(self, length: str, *features: str):
+        super().__init__(*features)
         self.length = float(length)
 
     def min_width(self, height: float) -> float:
@@ -349,6 +382,8 @@ class BoltFragment(Fragment):
             hw = maxsize / 2
         else:
             hw = (length + lw) / 2
+
+        # Draw the head of the bolt
 
         if not split_bolt:
             with BuildSketch(mode=Mode.PRIVATE) as sketch:
@@ -401,31 +436,32 @@ class BoltFragment(Fragment):
 
 
 @fragment("webbolt")
-class WebbBoltFragment(Fragment):
+class WebbBoltFragment(BoltBase):
     """
     Alternate bolt representation incorporating screw drive, with fixed length.
     """
 
-    def __init__(self, *features: str):
-        alias_mapping = {
-            "countersink": "countersunk",
-            "tap": "tapping",
-            "tapped": "tapping",
-        }
-        # Map aliases to canonical names
-        feats = [x.lower() for x in features]
-        feats = [alias_mapping[x] if x in alias_mapping else x for x in feats]
-        # A list of all modifier options that aren't heads
-        mods = {"tapping", "flip"}
-        headshapes = {"countersunk", "pan", "round", "socket"}
+    # def __init__(self, *features: str):
+    #     super().__init__(*features)
+    # alias_mapping = {
+    #     "countersink": "countersunk",
+    #     "tap": "tapping",
+    #     "tapped": "tapping",
+    # }
+    # # Map aliases to canonical names
+    # feats = [x.lower() for x in features]
+    # feats = [alias_mapping[x] if x in alias_mapping else x for x in feats]
+    # # A list of all modifier options that aren't heads
+    # mods = {"tapping", "flip"}
+    # headshapes = {"countersunk", "pan", "round", "socket"}
 
-        self.drives = set(features) - mods - headshapes
-        self.features = set(features) & mods
+    # self.drives = set(features) - mods - headshapes
+    # self.features = set(features) & mods
 
-        headshapes = set(features) & headshapes
-        if len(headshapes) > 1:
-            raise ValueError("Cannot specify multiple head shapes")
-        self.headshape = next(iter(headshapes), "pan")
+    # headshapes = set(features) & headshapes
+    # if len(headshapes) > 1:
+    #     raise ValueError("Cannot specify multiple head shapes")
+    # self.headshape = next(iter(headshapes), "pan")
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         # 12 mm high for 15 mm wide. Scale to this.
@@ -447,7 +483,7 @@ class WebbBoltFragment(Fragment):
         thread_lines: list[tuple[float, float]] = [(x0, 0)]
         thread_tip_height = height / 4 + thread_depth
 
-        if "tapping" in self.features:
+        if "tapping" in self.modifiers:
             thread_lines.append(
                 (x0 + thread_pitch * 2 - 0.2, thread_tip_height - thread_depth)
             )
@@ -527,19 +563,20 @@ class WebbBoltFragment(Fragment):
                 mirror(line.line, Plane.XZ)
             make_face()
 
-            # thread_depth/2 is just a "fudge" to slightly off-center it
-            fudge = thread_depth / 2
-            location = Location((width / 2 - head_w / 2 - fudge, 0))
-            add(
-                compound_head_shape(
-                    self.drives,
-                    radius=head_w * 0.9 / 2,
-                    outer_radius=head_w / 2,
-                ).locate(location),
-                mode=Mode.SUBTRACT,
-            )
+            if self.drives:
+                # thread_depth/2 is just a "fudge" to slightly off-center it
+                fudge = thread_depth / 2
+                location = Location((width / 2 - head_w / 2 - fudge, 0))
+                add(
+                    compound_drive_shape(
+                        self.drives,
+                        radius=head_w * 0.9 / 2,
+                        outer_radius=head_w / 2,
+                    ).locate(location),
+                    mode=Mode.SUBTRACT,
+                )
 
-        if "flip" in self.features:
+        if "flip" in self.modifiers:
             return sketch.sketch.scale(-1)
 
         return sketch.sketch
@@ -626,7 +663,7 @@ def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
     return sketch.sketch.scale(scale)
 
 
-def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch:
+def drive_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch:
     """
     Returns a shape representing a particular screw head.
 
@@ -688,14 +725,16 @@ def head_shape(shape: str, radius: float = 1, outer_radius: float = 1) -> Sketch
     return sketch
 
 
-def compound_head_shape(
+def compound_drive_shape(
     shapes: Iterable[str], radius: float = 1, outer_radius: float = 1
 ) -> Sketch:
     """Combine several head shapes into one"""
+    if not shapes:
+        raise ValueError("Have not requested any drive shapes")
     plus: list[Sketch] = []
     minus: list[Sketch] = []
     for shape in shapes:
-        sketch = head_shape(shape, radius=radius, outer_radius=outer_radius)
+        sketch = drive_shape(shape, radius=radius, outer_radius=outer_radius)
         (minus if sketch.positive else plus).append(sketch)
 
     with BuildSketch() as sketch:
