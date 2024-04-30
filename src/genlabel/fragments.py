@@ -56,7 +56,7 @@ def fragment_from_spec(spec: str) -> Fragment:
     match = RE_FRAGMENT.match(spec)
     assert match
     name, args = match.groups()
-    args = args.split(",") if args else []
+    args = [x.strip() for x in args.split(",")] if args else []
 
     if name not in FRAGMENTS:
         raise RuntimeError(f"Unknown fragment class: {name}")
@@ -383,44 +383,88 @@ class BoltFragment(BoltBase):
         else:
             hw = (length + lw) / 2
 
-        # Draw the head of the bolt
-
-        if not split_bolt:
-            with BuildSketch(mode=Mode.PRIVATE) as sketch:
-                with BuildLine() as line:
-                    Polyline(
+        # Whether the bolt is split or not, we always need a head part
+        with BuildSketch(mode=Mode.PRIVATE) as sketch:
+            with BuildLine() as _line:
+                # Draw the head of the bolt
+                # These head connectors are the anchor points for the rest
+                head_connector_top: Vector
+                head_connector_bottom: Vector
+                if self.headshape == "pan":
+                    head_radius = min(2, lw)
+                    _top_arc = CenterArc(
+                        (-hw + head_radius, height / 2 - head_radius),
+                        head_radius,
+                        90,
+                        90,
+                    )
+                    _bottom_arc = CenterArc(
+                        (-hw + head_radius, -height / 2 + head_radius),
+                        head_radius,
+                        180,
+                        90,
+                    )
+                    Line([_top_arc @ 1, _bottom_arc @ 0])
+                    if head_radius == lw:
+                        head_connector_top = _top_arc @ 0
+                        head_connector_bottom = _bottom_arc @ 1
+                    else:
+                        head_connector_top = Vector(-hw + lw, height / 2)
+                        head_connector_bottom = Vector(-hw + lw, -height / 2)
+                        Line([head_connector_top, _top_arc @ 0])
+                        Line([head_connector_bottom, _bottom_arc @ 1])
+                elif self.headshape == "socket":
+                    _head = Polyline(
                         [
-                            (-hw, 0),
+                            (-hw + lw, -height / 2),
+                            (-hw, -height / 2),
                             (-hw, height / 2),
                             (-hw + lw, height / 2),
+                        ]
+                    )
+                    head_connector_bottom = _head @ 0
+                    head_connector_top = _head @ 1
+                elif self.headshape == "countersunk":
+                    head_connector_bottom = Vector(-hw, -height / 2)
+                    head_connector_top = Vector(-hw, height / 2)
+                    Line([head_connector_bottom, head_connector_top])
+                elif self.headshape == "round":
+                    raise NotImplementedError()
+                else:
+                    raise ValueError(f"Unknown bolt head type: {self.headshape!r}")
+
+                if not split_bolt:
+                    # This line continuously covers the whole bolt
+                    Polyline(
+                        [
+                            head_connector_top,
                             (-hw + lw, lw / 2),
                             (hw, lw / 2),
-                            (hw, 0),
+                            (hw, -lw / 2),
+                            (-hw + lw, -lw / 2),
+                            head_connector_bottom,
                         ],
                     )
-                    mirror(line.line, Plane.XZ)
-                make_face()
-        else:
-            # We need to split the bolt
-            with BuildSketch(mode=Mode.PRIVATE) as sketch:
-                x_shaft_midpoint = lw + (maxsize - lw) / 2 - hw
-                with BuildLine() as line:
+                else:
+                    # We have the divider attached to the head to make
+                    x_shaft_midpoint = lw + (maxsize - lw) / 2 - hw
                     Polyline(
                         [
-                            (-hw, height / 2),
-                            (-hw + lw, height / 2),
+                            head_connector_top,
                             (-hw + lw, lw / 2),
                             # Divider is halfway along the shaft
                             (x_shaft_midpoint + lw / 2 - half_split, lw / 2),
                             (x_shaft_midpoint - lw / 2 - half_split, -lw / 2),
                             (-hw + lw, -lw / 2),
-                            (-hw + lw, -height / 2),
-                            (-hw, -height / 2),
+                            head_connector_bottom,
                         ],
-                        close=True,
                     )
-                make_face()
-                with BuildLine() as line:
+
+            make_face()
+
+            # If we've a split bolt, then we have a second face to make
+            if split_bolt:
+                with BuildLine() as _line:
                     Polyline(
                         [
                             # Divider is halfway along the shaft
@@ -432,6 +476,7 @@ class BoltFragment(BoltBase):
                         close=True,
                     )
                 make_face()
+
         return sketch.sketch
 
 
