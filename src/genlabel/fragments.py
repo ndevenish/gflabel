@@ -28,6 +28,7 @@ from build123d import (
     SlotCenterToCenter,
     Text,
     Triangle,
+    Vector,
     add,
     fillet,
     make_face,
@@ -417,8 +418,14 @@ class WebbBoltFragment(Fragment):
         # A list of all modifier options that aren't heads
         mods = {"tapping", "flip"}
         headshapes = {"countersunk", "pan", "round", "socket"}
-        self.heads = set(features) - mods - headshapes
-        self.features = set(features) & (mods | headshapes)
+
+        self.drives = set(features) - mods - headshapes
+        self.features = set(features) & mods
+
+        headshapes = set(features) & headshapes
+        if len(headshapes) > 1:
+            raise ValueError("Cannot specify multiple head shapes")
+        self.headshape = next(iter(headshapes), "pan")
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         # 12 mm high for 15 mm wide. Scale to this.
@@ -461,22 +468,61 @@ class WebbBoltFragment(Fragment):
 
         with BuildSketch() as sketch:
             with BuildLine() as line:
-                head_radius = 2
-                head_arc = CenterArc(
-                    (width / 2 - head_radius, height / 2 - head_radius),
-                    head_radius,
-                    0,
-                    90,
-                )
+                # The point that the thread connects to the head
+                head_connector: Vector
+                if self.headshape == "pan":
+                    head_radius = 2
+                    head_arc = CenterArc(
+                        (width / 2 - head_radius, height / 2 - head_radius),
+                        head_radius,
+                        0,
+                        90,
+                    )
+                    Line([head_arc @ 0, (width / 2, 0)])
+                    _top = Line([(x_head, height / 2), head_arc @ 1])
+                    head_connector = _top @ 0
+                elif self.headshape == "countersunk":
+                    _top = Line([(width / 2, height / 2), (width / 2, 0)])
+                    head_connector = _top @ 0
+                elif self.headshape == "socket":
+                    head_connector = (
+                        Polyline(
+                            [
+                                (x_head, height / 2),
+                                (width / 2, height / 2),
+                                (width / 2, 0),
+                            ]
+                        )
+                        @ 0
+                    )
+                elif self.headshape == "round":
+                    # Two cases:
+                    # - head wider than height/2, circular head and flat
+                    # - head smaller than height/2, squashed head
+                    if head_w > height / 2:
+                        x_roundhead = width / 2 - height / 2
+                        _arc = CenterArc((x_roundhead, 0), height / 2, 0, 90)
+                        flat = Line(
+                            [
+                                (x_head, height / 2),
+                                _arc @ 1,
+                            ]
+                        )
+                        head_connector = flat @ 0
+                    else:
+                        # But! Geometry means we will never get latter, at
+                        # least for now. So guard against it.
+                        raise NotImplementedError(
+                            "Round head on this aspect is not implemented. This should never happen."
+                        )
+
                 Polyline(
                     [
                         *thread_lines,
                         (x_head, thread_tip_height - thread_depth),
-                        (x_head, height / 2),
-                        head_arc @ 1,
+                        head_connector,
                     ]
                 )
-                Line([head_arc @ 0, (width / 2, 0)])
 
                 mirror(line.line, Plane.XZ)
             make_face()
@@ -486,7 +532,7 @@ class WebbBoltFragment(Fragment):
             location = Location((width / 2 - head_w / 2 - fudge, 0))
             add(
                 compound_head_shape(
-                    self.heads,
+                    self.drives,
                     radius=head_w * 0.9 / 2,
                     outer_radius=head_w / 2,
                 ).locate(location),
