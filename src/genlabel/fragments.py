@@ -415,9 +415,10 @@ class WebbBoltFragment(Fragment):
         feats = [x.lower() for x in features]
         feats = [alias_mapping[x] if x in alias_mapping else x for x in feats]
         # A list of all modifier options that aren't heads
-        mods = {"tapping", "countersunk", "pan", "round", "flip"}
-        self.heads = set(features) - mods
-        self.features = set(features) & mods
+        mods = {"tapping", "flip"}
+        headshapes = {"countersunk", "pan", "round", "socket"}
+        self.heads = set(features) - mods - headshapes
+        self.features = set(features) & (mods | headshapes)
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         # 12 mm high for 15 mm wide. Scale to this.
@@ -447,13 +448,14 @@ class WebbBoltFragment(Fragment):
             # Just shift the X origin. Not neat, but works.
             x0 += thread_pitch * 2
 
-        # Make a zig-zag for the bolt head
+        # Make a zig-zag for the bolt head.
+        # Only the zig is added, the zag is implicit by connecting to
+        # another zig immediately (or the explicit end-of-zag of the head)
         for i in range(n_threads):
             thread_lines.extend(
                 [
                     (x0 + i * thread_pitch, thread_tip_height - thread_depth),
                     (x0 + (i + 0.5) * thread_pitch, thread_tip_height),
-                    # (x0 + (i + 1) * thread_pitch, height / 4),
                 ]
             )
 
