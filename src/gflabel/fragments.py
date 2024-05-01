@@ -169,6 +169,8 @@ class ExpandingFragment(Fragment):
     priority = 0
     visible = False
 
+    examples = ["L{...}R"]
+
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         with BuildSketch() as sketch:
             Rectangle(maxsize, height)
@@ -862,7 +864,27 @@ def fragment_description_table() -> list[FragmentDescriptionRow]:
         FragmentDescriptionRow(
             names=["<number>"],
             description="A gap of specific width, in mm.",
-            examples=["]{25.4}["],
+            examples=["]{12.5}["],
         )
     )
     return sorted(descriptions, key=lambda x: x.names[0])
+
+
+if __name__ == "__main__":
+    # Generate a markdown table of fragment definitions
+    frags = fragment_description_table()
+    maxname = max(len(", ".join(frag.names)) for frag in frags)
+
+    # os.geten
+    desc_len = 82 - maxname
+    print(f"| {'Names':{maxname}} | {'Description':{desc_len}} |")
+    print("|" + "-" * (maxname + 2) + "|" + "-" * (desc_len + 2) + "|")
+
+    for frag in frags:
+
+        def _clean(s):
+            return s.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+
+        desc = _clean(frag.description)
+        names = _clean(", ".join(frag.names))
+        print(f"| {names:{maxname}} | {desc:{desc_len}} |")
