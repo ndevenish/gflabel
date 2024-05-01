@@ -202,6 +202,7 @@ def render_divided_label(
     with BuildSketch() as sketch:
         for i, label in enumerate(labels):
             with Locations([(leftmost_label_x + i * area_per_label.X, 0)]):
-                add(renderer.render(label, area_per_label))
+                if label.strip():
+                    add(renderer.render(label, area_per_label))
 
     return sketch.sketch
