@@ -6,9 +6,10 @@ Generates labels for labelled gridfinity bins, and similar uses.
 
 ### Basic Examples
 
-A simple, single label generation on a pred-style base. By default, labels are
-written to an output file "`label.step`". You can change this with `-o
-FILENAME`. `.step`, `.stl` and `.svg` are recognised:
+By default, labels are written to an output file "`label.step`". You can change
+this with `-o FILENAME`. `.step`, `.stl` and `.svg` are recognised
+
+A simple, single label generation on a pred-style base:
 
 ```
 gflabel "Basic Label" -o basic.step
@@ -80,14 +81,38 @@ options:
 ## Defining Labels
 
 Labels can consist of:
+
+- A physical base, which is the object that the labels are extruded out of
+  (or cut into).
 - Regular text, including unicode symbols (although complex symbols like emoji
   are unlikely to render properly, or at all - this is down to the underlying
-  library)
-- Newlines, either explicitly typed in (e.g. at the terminal), or 
+  library).
+- Newlines, either explicitly typed in (e.g. at the terminal), or escaped by
+  writing `\n` in the label definition. Each line will be rendered separately,
+  but still constrained to the same label area.
+- Fragments. These are directives enclosed in `{`curly`}` braces that add
+  symbols or define an area on the label.
+
+Let's go through each of these:
+
+### Label Bases
+
+The base (specified by `--base=TYPE`) defines the shape of what the label is generated on top of. Currently, the following bases are understood:
+
+| Base | Description | Image |
+| ---- | ----------- | ----- |
+| `pred` | For [Pred's parametric labelled bins](https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame) labels. If specifying this style, then height is ignored and width is in gridfinity units (e.g. `--width=1` for a label for a single 42mm bin). | ![](images/base_pred.png) |
+| `plain` | For a blank, square label with a chamfered top edge. The specified width and height will be the whole area of the label base. You must specify at least a width. | ![](images/base_plain.png)
+| `webb` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](images/base_webb.png)
+| `none` | For no base at all - the label will still be extruded. This is useful if you want to generate a label model to place onto another volume in the slicer. | ![](images/base_none.png) |
+
+
 ### Symbols/Fragments
 
 Along with text, you can add symbols and features to a label by specifying
-"fragments". These are directives enclosed in `{`curly braces`}`
+"fragments". These are directives enclosed in `{`curly braces`}`.
+
+A list of all the fragments currently recognised:
 
 | Names             | Description                                                       |
 |-------------------|-------------------------------------------------------------------|
@@ -103,18 +128,43 @@ Along with text, you can add symbols and features to a label by specifying
 | washer            | Circular washer with a circular hole.                             |
 | webbolt           | Alternate bolt representation incorporating screw drive, with fixed length. |
 
+A basic set of examples showing the usage of some of these:
 
-### Label Bases
+![](images/examples.svg)
 
-The base (specified by `--base=TYPE`) defines the shape of what the label is generated on top of. Currently, the following bases are understood:
+### Bolt/Screw Drives
 
-| Base | Description | Image |
-| ---- | ----------- | ----- |
-| `pred` | For [Pred's parametric labelled bins](https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame) labels. If specifying this style, then height is ignored and width is in gridfinity units (e.g. `--width=1` for a label for a single 42mm bin). | ![](images/base_pred.png) |
-| `plain` | For a blank, square label with a chamfered top edge. The specified width and height will be the whole area of the label base. You must specify at least a width. | ![](images/base_plain.png)
-| `webb` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](images/base_webb.png)
-| `none` | For no base at all - the label will still be extruded. This is useful if you want to generate a label model to place onto another volume in the slicer. | ![](images/base_none.png) |
+The `{head(...)}` fragment, and any other fragments that will accept drive
+head types, takes a feature specification for the kind of drive that you want
+to represent. These are stackable, so you can specify multiple drives and they
+will be overlapped. Examples of using the drive types are:
 
-Generate Pred-style Gridfinity Labels
+![](images/drives.svg)
+
+### Bolts and Screw Heads
+
+There are two classes of bolt/screw representation:
+
+- `bolt` corresponding to the [Pred's printable label bin](https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame) bolt style. This is
+  used simple as `{bolt(LENGTH)}`, where `LENGTH` is the length of the bolt/
+  screw stem that you want (excluding the height of the head). If the label
+  area is too small to fit the entire bolt on, then the bolt will be rendered
+  with a "break" in the middle, indicating that it does not show the whole
+  bolt length. It will also accept a `slot` feature that marks a small indent
+  on the top of the head, and `flanged` in order to render a washer-style
+  flange at the bottom of the active head.
+- `webb` corresponding to the bolt style included with [Cullen J Webb's swappable
+  gridfinity label](https://makerworld.com/en/models/446624) system. It doesn't
+  change length, but it will accept any combination of screw drive specifier
+  and display them in the bolt head.
+
+Both types of bolts will accept a head style, one of `pan`, `socket`, `round`,
+or `countersunk`. Both can be marked as `tapping` to have a pointed tip, and
+both can be pointed backwards by adding the `flipped` feature.
+
+Examples showing some differences between the two bolts:
+
+![](images/bolts.svg)
+
 
 
