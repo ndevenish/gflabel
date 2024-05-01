@@ -80,7 +80,7 @@ class ListFragmentsAction(argparse.Action):
 
 
 def run(argv: list[str] | None = None):
-    parser = ArgumentParser(description="Generate pred-style gridfinity bin labels")
+    parser = ArgumentParser(description="Generate gridfinity bin labels")
     parser.add_argument(
         "--base",
         choices=["pred", "plain", "none", "webb"],
@@ -252,9 +252,9 @@ def run(argv: list[str] | None = None):
             # max_dimension = max(*Compound(children=visible + _hidden).bounding_box().size)
             e.add_layer(
                 "Visible",
-                fill_color=ColorIndex.YELLOW,
-                line_color=ColorIndex.BLACK,
-                line_weight=0.4,
+                fill_color=ColorIndex.BLACK,
+                # line_color=ColorIndex.BLACK,
+                line_weight=0.1,
             )
             e.add_shape(lines, layer="Visible")
             e.write(args.output)
