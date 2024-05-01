@@ -66,7 +66,7 @@ def fragment_from_spec(spec: str) -> Fragment:
     return FRAGMENTS[name](*args)
 
 
-def fragment(*names: str):
+def fragment(*names: str, examples: list[str] = []):
     """Register a label fragment generator"""
 
     def _wrapped(
@@ -86,6 +86,7 @@ def fragment(*names: str):
 
             # fragment = lambda *args: FunctionalFragment(fn, *args)
             fragment.__doc__ = fn.__doc__
+            setattr(fragment, "examples", examples)
         else:
             fragment = fn
         # Now assign this in the name dict
@@ -806,7 +807,7 @@ def compound_drive_shape(
     return sketch.sketch
 
 
-@fragment("box")
+@fragment("box", examples=["{box(35)}"])
 def _box_fragment(
     height: float, maxsize: float, in_width: str, in_height: str | None = None
 ) -> Sketch:
