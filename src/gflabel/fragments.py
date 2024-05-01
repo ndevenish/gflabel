@@ -364,7 +364,7 @@ class BoltFragment(BoltBase):
     variable_width = True
 
     def __init__(self, length: str, *features: str):
-        self.slotted = "slotted" in (x.lower() for x in features)
+        self.slotted = bool({"slotted", "slot"} & {x.lower() for x in features})
         features = tuple(x for x in features if not x.lower() == "slotted")
 
         self.length = float(length)
