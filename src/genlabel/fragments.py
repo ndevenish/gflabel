@@ -10,6 +10,7 @@ from math import cos, pi, radians, sin, tan
 from typing import Any, Iterable, NamedTuple, Type
 
 from build123d import (
+    Align,
     Axis,
     BuildLine,
     BuildSketch,
@@ -19,6 +20,7 @@ from build123d import (
     GridLocations,
     Line,
     Location,
+    Locations,
     Mode,
     Plane,
     PolarLocations,
@@ -359,8 +361,11 @@ class BoltFragment(BoltBase):
     variable_width = True
 
     def __init__(self, length: str, *features: str):
-        super().__init__(*features)
+        self.slotted = "slotted" in (x.lower() for x in features)
+        features = tuple(x for x in features if not x.lower() == "slotted")
+
         self.length = float(length)
+        super().__init__(*features)
 
     def min_width(self, height: float) -> float:
         return height
@@ -480,6 +485,14 @@ class BoltFragment(BoltBase):
                     )
                 make_face()
 
+            if self.slotted:
+                with Locations([(-hw, 0)]):
+                    Rectangle(
+                        lw / 2,
+                        lw / 2,
+                        align=(Align.MIN, Align.CENTER),
+                        mode=Mode.SUBTRACT,
+                    )
         return sketch.sketch
 
 
