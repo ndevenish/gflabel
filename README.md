@@ -1,8 +1,42 @@
 # GFLabel
 
-Generates labels for labelled gridfinity bins, and similar uses.
+Generates labels for labelled [gridfinity][gridfinity] bins (primarily
+[pred][pred] and [Cullen J Webb][webb] labels), and similar
+generate-smallish-printable-label uses. Leverages [build123d][build123d].
+
+[gridfinity]: https://gridfinity.xyz/
+[pred]: https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame
+[webb]: https://makerworld.com/en/models/446624
+[build123d]: https://github.com/gumyr/build123d
+
+## State
+
+This is an early version of a hobby project. Thus:
+
+- It has a lot of rough edges, not the least that the output is messy and
+  not very useful.
+- It sometimes needs manual encouragement to make labels looking good or
+  consistent.
+- A habit of sometimes crashing OCP when geometry is a little bit odd.
+
 
 ## Usage
+
+### Installation
+
+You should be able to install into your favorite python-virtual-environment
+manager by just using pip:
+
+```
+pip install gflabel
+```
+
+This should work on most platforms, but for specifically macOS arm64, the
+underlying cadquery-ocp library is not available as a wheel through pypi.
+In this case, you will have to set up the build123d environment manually.
+build123d has [some notes][install_build123d] on resolving this conflict.
+
+[install_build123d]: https://build123d.readthedocs.io/en/latest/installation.html#special-notes-on-apple-silicon-installs
 
 ### Basic Examples
 
