@@ -35,6 +35,7 @@ def _spec_to_fragments(spec: str) -> list[fragments.Fragment]:
             # We have text. Build123d Text object doesn't handle leading/
             # trailing spaces, so let's split them out here and put in
             # explicit whitespace fragments
+            part = part.replace("{{", "{").replace("}}", "}")
             left_spaces = part[: len(part) - len(part.lstrip())]
             if left_spaces:
                 fragment_list.append(fragments.WhitespaceFragment(left_spaces))
