@@ -286,7 +286,7 @@ def _fragment_head(height: float, _maxsize: float, *headshapes: str) -> Sketch:
     return sketch.sketch
 
 
-@fragment("threaded_insert")
+@fragment("threaded_insert", examples=["{threaded_insert}"])
 def _fragment_insert(height: float, _maxsize: float) -> Sketch:
     """Representation of a threaded insert."""
     with BuildSketch() as sketch:
@@ -323,7 +323,7 @@ def _fragment_insert(height: float, _maxsize: float) -> Sketch:
     return sketch.sketch.scale(scale)
 
 
-@fragment("hexnut", "nut")
+@fragment("hexnut", "nut", examples=["{nut}"])
 def _fragment_hexnut(height: float, _maxsize: float) -> Sketch:
     """Hexagonal outer profile nut with circular cutout."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
@@ -332,7 +332,7 @@ def _fragment_hexnut(height: float, _maxsize: float) -> Sketch:
     return sketch.sketch
 
 
-@fragment("washer")
+@fragment("washer", examples=["{washer}"])
 def _fragment_washer(height: float, _maxsize: float) -> Sketch:
     """Circular washer with a circular hole."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
@@ -668,7 +668,7 @@ class WebbBoltFragment(BoltBase):
         return sketch.sketch
 
 
-@fragment("variable_resistor")
+@fragment("variable_resistor", examples=["{variable_resistor}"])
 def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
     """Electrical symbol of a variable resistor."""
     # symb = import_svg("symbols/variable_resistor.svg")
