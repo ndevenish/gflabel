@@ -45,6 +45,28 @@ RE_FRAGMENT = re.compile(r"(.+?)(?:\((.*)\))?$")
 
 FRAGMENTS: dict[str, Type[Fragment] | Callable[..., Fragment]] = {}
 
+# Alias names for drive. These should be remapped before rendering
+DRIVE_ALIASES = {
+    "+": "phillips",
+    "posidrive": "pozidrive",
+    "posi": "pozidrive",
+    "pozi": "pozidrive",
+    "-": "slot",
+    "tri": "triangle",
+}
+DRIVES = {
+    "phillips",
+    "pozidrive",
+    "slot",
+    "hex",
+    "cross",
+    "square",
+    "triangle",
+    "torx",
+    "security",
+    "phillipsslot",
+}
+
 
 def fragment_from_spec(spec: str) -> Fragment:
     # If the fragment is just a number, this is distance to space out
