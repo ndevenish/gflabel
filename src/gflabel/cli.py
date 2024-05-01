@@ -20,6 +20,7 @@ from build123d import (
     Compound,
     ExportSVG,
     FontStyle,
+    Keep,
     Location,
     Locations,
     Mode,
@@ -273,4 +274,22 @@ def run(argv: list[str] | None = None):
     if args.vscode:
         bd.export_stl(part.part, "label.stl")
         export_step(part.part, "label.step")
-        show(part)
+        # Split the base for display as two colours
+        show_parts = []
+        show_cols: list[str | tuple[float, float, float] | None] = []
+        top = part.part.split(Plane.XY, keep=Keep.TOP)
+        if top:
+            show_parts.append(top)
+            show_cols.append((0.2, 0.2, 0.2))
+        if args.base != "none":
+            bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
+            if bottom:
+                show_parts.append(bottom)
+                show_cols.append(None)
+
+        show(
+            *show_parts,
+            colors=show_cols,
+            # position=[0, -10, 10],
+            # target=[0, 0, 0],
+        )
