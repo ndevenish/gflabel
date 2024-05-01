@@ -420,6 +420,12 @@ class BoltFragment(BoltBase):
         if self.flanged:
             head_h -= lw / 3
 
+        # Work out what the bottom of the bolt looks like
+        if "tapping" in self.modifiers:
+            bolt_bottom = [(hw - lw / 2, lw / 2), (hw, 0), (hw - lw / 2, -lw / 2)]
+        else:
+            bolt_bottom = [(hw, lw / 2), (hw, -lw / 2)]
+
         # Whether the bolt is split or not, we always need a head part
         with BuildSketch(mode=Mode.PRIVATE) as sketch:
             with BuildLine() as _line:
@@ -478,8 +484,7 @@ class BoltFragment(BoltBase):
                         [
                             head_connector_top,
                             (-hw + lw, lw / 2),
-                            (hw, lw / 2),
-                            (hw, -lw / 2),
+                            *bolt_bottom,
                             (-hw + lw, -lw / 2),
                             head_connector_bottom,
                         ],
@@ -508,8 +513,7 @@ class BoltFragment(BoltBase):
                         [
                             # Divider is halfway along the shaft
                             (x_shaft_midpoint + lw / 2 + half_split, lw / 2),
-                            (hw, lw / 2),
-                            (hw, -lw / 2),
+                            *bolt_bottom,
                             (x_shaft_midpoint - lw / 2 + half_split, -lw / 2),
                         ],
                         close=True,
