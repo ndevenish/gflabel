@@ -38,6 +38,13 @@ build123d has [some notes][install_build123d] on resolving this conflict.
 
 [install_build123d]: https://build123d.readthedocs.io/en/latest/installation.html#special-notes-on-apple-silicon-installs
 
+Otherwise, you can check out this repository and `pip install` it directly, or
+install directly from the github repo:
+
+```
+pip install git+https://github.com/ndevenish/gflabel.git
+```
+
 ### Basic Examples
 
 By default, labels are written to an output file "`label.step`". You can change
