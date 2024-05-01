@@ -26,3 +26,14 @@ required-imports = ["from __future__ import annotations"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.bumpversion]
+current_version = "0.1.0"
+tag = true
+tag_name = "v{new_version}"
+commit = true
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
