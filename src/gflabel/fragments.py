@@ -387,7 +387,8 @@ class BoltFragment(BoltBase):
 
     def __init__(self, length: str, *features: str):
         self.slotted = bool({"slotted", "slot"} & {x.lower() for x in features})
-        features = tuple(x for x in features if not x.lower() == "slotted")
+        self.flanged = bool({"flanged", "flange"} & {x.lower() for x in features})
+        features = tuple(x for x in features if x.lower() not in {"slotted", "flanged"})
 
         self.length = float(length)
         super().__init__(*features)
@@ -414,6 +415,11 @@ class BoltFragment(BoltBase):
         else:
             hw = (length + lw) / 2
 
+        head_h = height / 2
+        # If asked for flanged, just shrink the head vertically
+        if self.flanged:
+            head_h -= lw / 3
+
         # Whether the bolt is split or not, we always need a head part
         with BuildSketch(mode=Mode.PRIVATE) as sketch:
             with BuildLine() as _line:
@@ -424,13 +430,13 @@ class BoltFragment(BoltBase):
                 if self.headshape == "pan":
                     head_radius = min(2, lw / 2)
                     _top_arc = CenterArc(
-                        (-hw + head_radius, height / 2 - head_radius),
+                        (-hw + head_radius, head_h - head_radius),
                         head_radius,
                         90,
                         90,
                     )
                     _bottom_arc = CenterArc(
-                        (-hw + head_radius, -height / 2 + head_radius),
+                        (-hw + head_radius, -head_h + head_radius),
                         head_radius,
                         180,
                         90,
@@ -440,27 +446,27 @@ class BoltFragment(BoltBase):
                         head_connector_top = _top_arc @ 0
                         head_connector_bottom = _bottom_arc @ 1
                     else:
-                        head_connector_top = Vector(-hw + lw, height / 2)
-                        head_connector_bottom = Vector(-hw + lw, -height / 2)
+                        head_connector_top = Vector(-hw + lw, head_h)
+                        head_connector_bottom = Vector(-hw + lw, -head_h)
                         Line([head_connector_top, _top_arc @ 0])
                         Line([head_connector_bottom, _bottom_arc @ 1])
                 elif self.headshape == "socket":
                     _head = Polyline(
                         [
-                            (-hw + lw, -height / 2),
-                            (-hw, -height / 2),
-                            (-hw, height / 2),
-                            (-hw + lw, height / 2),
+                            (-hw + lw, -head_h),
+                            (-hw, -head_h),
+                            (-hw, head_h),
+                            (-hw + lw, head_h),
                         ]
                     )
                     head_connector_bottom = _head @ 0
                     head_connector_top = _head @ 1
                 elif self.headshape == "countersunk":
-                    head_connector_bottom = Vector(-hw, -height / 2)
-                    head_connector_top = Vector(-hw, height / 2)
+                    head_connector_bottom = Vector(-hw, -head_h)
+                    head_connector_top = Vector(-hw, head_h)
                     Line([head_connector_bottom, head_connector_top])
                 elif self.headshape == "round":
-                    _head = EllipticalCenterArc((-hw + lw, 0), lw, height / 2, 90, -90)
+                    _head = EllipticalCenterArc((-hw + lw, 0), lw, head_h, 90, -90)
                     head_connector_top = _head @ 0
                     head_connector_bottom = _head @ 1
                 else:
@@ -518,6 +524,9 @@ class BoltFragment(BoltBase):
                         align=(Align.MIN, Align.CENTER),
                         mode=Mode.SUBTRACT,
                     )
+            if self.flanged:
+                with Locations([(-hw + lw, 0)]):
+                    Rectangle(lw / 4, height, align=(Align.MAX, Align.CENTER))
         return sketch.sketch
 
 
