@@ -353,6 +353,7 @@ class BoltBase(Fragment):
         "countersink": "countersunk",
         "tap": "tapping",
         "tapped": "tapping",
+        "flipped": "flip",
     }
     DEFAULT_HEADSHAPE = "pan"
 
@@ -531,6 +532,10 @@ class BoltFragment(BoltBase):
             if self.flanged:
                 with Locations([(-hw + lw, 0)]):
                     Rectangle(lw / 4, height, align=(Align.MAX, Align.CENTER))
+
+        if "flip" in self.modifiers:
+            return sketch.sketch.scale(-1)
+
         return sketch.sketch
 
 
