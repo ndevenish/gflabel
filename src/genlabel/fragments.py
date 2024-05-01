@@ -15,6 +15,7 @@ from build123d import (
     BuildSketch,
     CenterArc,
     Circle,
+    EllipticalCenterArc,
     GridLocations,
     Line,
     Location,
@@ -429,7 +430,9 @@ class BoltFragment(BoltBase):
                     head_connector_top = Vector(-hw, height / 2)
                     Line([head_connector_bottom, head_connector_top])
                 elif self.headshape == "round":
-                    raise NotImplementedError()
+                    _head = EllipticalCenterArc((-hw + lw, 0), lw, height / 2, 90, -90)
+                    head_connector_top = _head @ 0
+                    head_connector_bottom = _head @ 1
                 else:
                     raise ValueError(f"Unknown bolt head type: {self.headshape!r}")
 
