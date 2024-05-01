@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "genlabel"
+name = "gflabel"
 version = "0.1.0"
 description = ""
 authors = ["Nicholas Devenish <ndevenish@gmail.com>"]
@@ -12,7 +12,7 @@ build123d = "^0.5.0"
 rich = "^13.7.1"
 
 [tool.poetry.scripts]
-genlabel = "genlabel.cli:run"
+gflabel = "gflabel.cli:run"
 
 [tool.jane]
 profiles = ["default"]
