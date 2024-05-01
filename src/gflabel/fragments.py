@@ -422,7 +422,7 @@ class BoltFragment(BoltBase):
                 head_connector_top: Vector
                 head_connector_bottom: Vector
                 if self.headshape == "pan":
-                    head_radius = min(2, lw)
+                    head_radius = min(2, lw / 2)
                     _top_arc = CenterArc(
                         (-hw + head_radius, height / 2 - head_radius),
                         head_radius,
