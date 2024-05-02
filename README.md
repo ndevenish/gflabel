@@ -84,10 +84,17 @@ gflabel "{head(hex)} {bolt(20)}\nM2×20"
 ![](images/example_boltbin.png)
 
 Some symbols can also take many modifiers for e.g. drive or head type:
+
 ```
 gflabel "{head(+)} {bolt(50,slotted,round)}\nM3×50"
 ```
 ![](images/example_bolt_broken.png)
+
+And multiple label styles/symbol styles/fonts can be selected:
+```
+gflabel --base=webb --font=Arial "M3×20{...}{webbolt(+)}"
+```
+![](images/example_webb.png)
 
 ## Command Parameters
 
