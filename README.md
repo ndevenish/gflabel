@@ -31,10 +31,15 @@ manager by just using pip:
 pip install gflabel
 ```
 
-This should work on most platforms, but for specifically macOS arm64, the
-underlying cadquery-ocp library is not available as a wheel through pypi.
-In this case, you will have to set up the build123d environment manually.
-build123d has [some notes][install_build123d] on resolving this conflict.
+This should work on most modern platforms, but with the following caveats:
+
+- Linux wheels for the dependency cadquery-ocp are only available on
+  resonably modern (e.g. Ubuntu 22.4+) linux distributions, so you may have to
+  go to conda to install on an older machine.
+- For specifically macOS arm64, the underlying cadquery-ocp library is not
+  available as a wheel through pypi. In this case, you will have to set up the
+  build123d environment manually. build123d has [some notes][install_build123d]
+  on resolving this conflict.
 
 [install_build123d]: https://build123d.readthedocs.io/en/latest/installation.html#special-notes-on-apple-silicon-installs
 
