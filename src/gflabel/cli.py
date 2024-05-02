@@ -112,6 +112,11 @@ def run(argv: list[str] | None = None):
         default=0.4,
         type=float,
     )
+    parser.add_argument(
+        "--no-overheight",
+        help="Disable the 'Overheight' system. This allows some symbols to oversize, meaning that the rest of the line will first shrink before they are shrunk.",
+        action="store_true",
+    )
 
     parser.add_argument(
         "labels", nargs="*" if "--vscode" in sys.argv else "+", metavar="LABEL"

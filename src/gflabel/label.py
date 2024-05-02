@@ -92,7 +92,14 @@ class LabelRenderer:
                 )
                 print(f"Rendering line {n} ({line}) at {render_y})")
                 with Locations([(0, render_y)]):
-                    add(self._render_single_line(line, Vector(X=area.X, Y=row_height)))
+                    add(
+                        self._render_single_line(
+                            line,
+                            Vector(X=area.X, Y=row_height),
+                            allow_overheight=(len(lines) == 1)
+                            and self.opts.allow_overheight,
+                        )
+                    )
 
         scale_to_maxwidth = area.X / sketch.sketch.bounding_box().size.X
         scale_to_maxheight = area.Y / sketch.sketch.bounding_box().size.Y
@@ -134,19 +141,37 @@ class LabelRenderer:
 
         return sketch.sketch
 
-    def _render_single_line(self, line: str, area: Vector) -> Sketch:
+    def _render_single_line(
+        self, line: str, area: Vector, allow_overheight: bool
+    ) -> Sketch:
         """
         Render a single line of a labelspec.
         """
         # Firstly, split the line into a set of fragment objects
         frags = _spec_to_fragments(line)
 
-        rendered: dict[fragments.Fragment, Sketch]
-        rendered = {
-            f: f.render(area.Y, area.X, self.opts)
-            for f in frags
-            if not f.variable_width
-        }
+        # Overheight fragments: Work out if we have any, so that we can
+        # scale the total height such that they fit.
+        # If this isn't turned on, then we will still allow the fragment
+        # to be overheight but it will be given a smaller vertical area
+        # such that the overheight fits in the line.
+        options = self.opts._replace(allow_overheight=allow_overheight)
+        Y_available = area.Y
+        if allow_overheight:
+            max_overheight = max(x.overheight or 1 for x in frags)
+            if max_overheight > 1:
+                Y_available /= max_overheight
+                print(
+                    f"Scaling Y area to account for overheight from {area.Y:.2f} -> {Y_available:.2f}"
+                )
+
+        rendered: dict[fragments.Fragment, Sketch] = {}
+        for frag in [x for x in frags if not x.variable_width]:
+            # Handle overheight if we have overheight turned off
+            frag_available_y = Y_available / (
+                1 if allow_overheight else (frag.overheight or 1)
+            )
+            rendered[frag] = frag.render(frag_available_y, area.X, self.opts)
 
         # Work out what we have left to give to the variable labels
         remaining_area = area.X - sum(
@@ -162,10 +187,14 @@ class LabelRenderer:
             key=lambda x: x.priority,
             reverse=True,
         ):
+            # Handle overheight if we have overheight turned off
+            frag_available_y = Y_available / (
+                1 if allow_overheight else (frag.overheight or 1)
+            )
             render = frag.render(
-                area.Y,
+                frag_available_y,
                 max(remaining_area / count_variable, frag.min_width(area.Y)),
-                self.opts,
+                options,
             )
             rendered[frag] = render
             count_variable -= 1

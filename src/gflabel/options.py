@@ -35,6 +35,10 @@ class RenderOptions(NamedTuple):
     line_spacing_mm: float = 0.1
     margin_mm: float = 0.4
     font: FontOptions = FontOptions()
+    # Overheight fragments cause the entire line to be scaled down in
+    # height so that they can fit. Is this allowed, or will they scale
+    # like everything else?
+    allow_overheight: bool = True
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> RenderOptions:
@@ -48,4 +52,5 @@ class RenderOptions(NamedTuple):
                 font_style=font_style,
                 font_height_mm=args.font_size,
             ),
+            allow_overheight=not args.no_overheight,
         )

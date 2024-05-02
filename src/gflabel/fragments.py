@@ -89,7 +89,7 @@ def fragment_from_spec(spec: str) -> Fragment:
     return FRAGMENTS[name](*args)
 
 
-def fragment(*names: str, examples: list[str] = []):
+def fragment(*names: str, examples: list[str] = [], overheight: float | None = None):
     """Register a label fragment generator"""
 
     def _wrapped(
@@ -105,11 +105,15 @@ def fragment(*names: str, examples: list[str] = []):
             #     ) -> Sketch:
             #         return orig_fn(height, maxsize)
             def fragment(*args):
-                return FunctionalFragment(fn, *args)
+                frag = FunctionalFragment(fn, *args)
+                frag.overheight = overheight
+                frag.examples = examples
+                return frag
 
             # fragment = lambda *args: FunctionalFragment(fn, *args)
             fragment.__doc__ = fn.__doc__
             setattr(fragment, "examples", examples)
+            setattr(fragment, "overheight", overheight)
         else:
             fragment = fn
         # Now assign this in the name dict
@@ -134,6 +138,12 @@ class Fragment(metaclass=ABCMeta):
 
     # An example, or list of examples, demonstrating the fragment.
     examples: list[str] | None = None
+
+    # Fragments are allowed to go overheight, in which case the entire
+    # label is scaled down to fit. If this is set then the working area
+    # will preemptively be scaled to compensate, avoiding a double-round
+    # of resizing.
+    overheight: float | None = None
 
     def __init__(self, *args: list[Any]):
         if args:
@@ -690,7 +700,7 @@ class WebbBoltFragment(BoltBase):
         return sketch.sketch
 
 
-@fragment("variable_resistor", examples=["{variable_resistor}"])
+@fragment("variable_resistor", examples=["{variable_resistor}"], overheight=1.5)
 def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
     """Electrical symbol of a variable resistor."""
     t = 0.4 / 2  # Line half-thickness. Lines are offset by this.
@@ -736,7 +746,7 @@ def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
 
     # Scale to fit in our height
     size = sketch.sketch.bounding_box().size
-    scale = height / size.Y
+    scale = (height * 1.5) / size.Y
 
     return sketch.sketch.scale(scale)
 
