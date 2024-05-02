@@ -14,7 +14,7 @@ generate-smallish-printable-label uses. Leverages [build123d][build123d].
 This is an early version of a hobby project. Thus:
 
 - It has a lot of rough edges, not the least that the output is messy and
-  not very useful.
+  not very useful. But functionality not used much might not work well.
 - It sometimes needs manual encouragement to make labels looking good or
   consistent.
 - A habit of sometimes crashing OCP when geometry is a little bit odd.
