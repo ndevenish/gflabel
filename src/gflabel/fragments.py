@@ -559,29 +559,10 @@ class WebbBoltFragment(BoltBase):
     Alternate bolt representation incorporating screw drive, with fixed length.
     """
 
-    # def __init__(self, *features: str):
-    #     super().__init__(*features)
-    # alias_mapping = {
-    #     "countersink": "countersunk",
-    #     "tap": "tapping",
-    #     "tapped": "tapping",
-    # }
-    # # Map aliases to canonical names
-    # feats = [x.lower() for x in features]
-    # feats = [alias_mapping[x] if x in alias_mapping else x for x in feats]
-    # # A list of all modifier options that aren't heads
-    # mods = {"tapping", "flip"}
-    # headshapes = {"countersunk", "pan", "round", "socket"}
-
-    # self.drives = set(features) - mods - headshapes
-    # self.features = set(features) & mods
-
-    # headshapes = set(features) & headshapes
-    # if len(headshapes) > 1:
-    #     raise ValueError("Cannot specify multiple head shapes")
-    # self.headshape = next(iter(headshapes), "pan")
+    overheight = 1.6
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        height *= self.overheight
         # 12 mm high for 15 mm wide. Scale to this.
         width = 15 / 12 * height
         # Relative proportion of body:head

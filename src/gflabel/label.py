@@ -96,8 +96,7 @@ class LabelRenderer:
                         self._render_single_line(
                             line,
                             Vector(X=area.X, Y=row_height),
-                            allow_overheight=(len(lines) == 1)
-                            and self.opts.allow_overheight,
+                            self.opts.allow_overheight,
                         )
                     )
 
