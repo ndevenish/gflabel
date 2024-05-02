@@ -6,7 +6,7 @@ import re
 import textwrap
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
-from math import cos, pi, radians, sin, tan
+from math import cos, radians, sin
 from typing import Any, Iterable, NamedTuple, Type
 
 from build123d import (
@@ -36,6 +36,7 @@ from build123d import (
     fillet,
     make_face,
     mirror,
+    offset,
 )
 
 from .options import RenderOptions
@@ -261,13 +262,16 @@ class WhitespaceFragment(Fragment):
         return sketch.sketch
 
 
-@fragment("hexhead")
-def _fragment_hexhead(height: float, _maxsize: float) -> Sketch:
-    """Circular screw head with a hexagonal drive. Same as 'head(hex)'."""
+@fragment("hexhead", examples=["{hexhead}"])
+def _fragment_hexhead(height: float, _maxsize: float, *drives: str) -> Sketch:
+    """Hexagonal screw head. Will accept drives, but not compulsory."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        Circle(height / 2)
-        add(drive_shape("hex").scale(height * 0.6), mode=Mode.SUBTRACT)
-        # RegularPolygon(height / 2 * 0.6, side_count=6, mode=Mode.SUBTRACT)
+        RegularPolygon(height / 2, 6)
+        if drives:
+            add(
+                compound_drive_shape(drives, 0.6 * height / 2, height / 2),
+                mode=Mode.SUBTRACT,
+            )
     return sketch.sketch
 
 
@@ -689,14 +693,14 @@ class WebbBoltFragment(BoltBase):
 @fragment("variable_resistor", examples=["{variable_resistor}"])
 def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
     """Electrical symbol of a variable resistor."""
-    # symb = import_svg("symbols/variable_resistor.svg")
-    t = 0.4 / 2
-    w = 6.5
-    h = 2
+    t = 0.4 / 2  # Line half-thickness. Lines are offset by this.
+    w = 6.5  # Width of resistor
+    h = 2  # Height of resistor
+    l_arr = 7  # Arrow length
+    l_head = 1.5  # Arrow head length
+    angle = 30  # Angle of Arrow
+
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        # add(symb)
-        # Circle(1)
-        # sweep(symb)
         with BuildLine():
             Polyline(
                 [
@@ -715,54 +719,24 @@ def _fragment_variable_resistor(height: float, maxsize: float) -> Sketch:
         mirror(sketch.sketch, Plane.XZ)
         mirror(sketch.sketch, Plane.YZ)
 
-        # with BuildLine():
-        l_arr = 7
-        l_head = 1.5
-        angle = 30
-
         theta = radians(angle)
-        oh = t / tan(theta) + t / sin(theta)
-        sigma = pi / 2 - theta
-        l_short = t / cos(sigma)
-        #     l_arrow = 1.5
-        #     angle = 30
-        #     # Work out the intersect height
-        #     h_i = t / math.sin(math.radians(angle))
-        #     arr_bottom_lost = t / math.tan(math.radians(angle))
-        arrow_parts = [
-            (0, -l_arr / 2),
-            (-t, -l_arr / 2),
-            (-t, l_arr / 2 - oh),
-            (
-                -t - sin(theta) * (l_head - l_short),
-                l_arr / 2 - oh - cos(theta) * (l_head - l_short),
-            ),
-            (-sin(theta) * l_head, l_arr / 2 - cos(theta) * l_head),
-            (0, l_arr / 2),
-            # (0, -l_arr / 2),
-        ]
         with BuildSketch(mode=Mode.PRIVATE) as arrow:
-            with BuildLine() as line:
+            with BuildLine() as _line:
                 Polyline(
-                    arrow_parts,
-                    # close=True,
+                    [
+                        (0, -l_arr / 2),
+                        (0, l_arr / 2),
+                        (-sin(theta) * l_head, l_arr / 2 - cos(theta) * l_head),
+                    ]
                 )
-                mirror(line.line, Plane.YZ)
+                offset(amount=t)
             make_face()
+            mirror(arrow.sketch, Plane.YZ)
         add(arrow.sketch.rotate(Axis.Z, -30))
-        # sketch.sketch.rotate(Axis.Z, 20)
-        # with BuildLine() as line:
-        #     Line([(0, -arr_h / 2), (0, arr_h / 2)])
-        # Arrow(arr_h, line, t * 2, head_at_start=False)
-        # mirror(line.line, Plane.XZ)
-        # mirror(line.line, Plane.YZ)
-        # offset(symb, amount=1)
-        # add(symb)
-    # Scale to fit in our height, unless this would take us over width
+
+    # Scale to fit in our height
     size = sketch.sketch.bounding_box().size
     scale = height / size.Y
-    # actual_w = min(scale * size.X, maxsize)
-    # scale = actual_w / size.X
 
     return sketch.sketch.scale(scale)
 
