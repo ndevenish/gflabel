@@ -1,4 +1,4 @@
-# GFLabel 0.1.3 (Unreleased)
+# GFLabel 0.1.3 (2024-05-03)
 
 - Add style `webbolt(partial)`. This causes a thread to be generated only on
   the bottom part of the screw, representing a partially threaded bolt.
