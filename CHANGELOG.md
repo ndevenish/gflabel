@@ -2,6 +2,8 @@
 
 - Add style `webbolt(partial)`. This causes a thread to be generated only on
   the bottom part of the screw, representing a partially threaded bolt.
+- Added `lockwasher` for a locking washer. The size of this and the washer
+  were slightly adjusted to be closer to the webb-style size.
 
 # GFLabel 0.1.2 (2024-05-03)
 

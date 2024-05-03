@@ -176,6 +176,7 @@ A list of all the fragments currently recognised:
 | head              | Screw head with specifiable head-shape.                           |
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
+| lockwasher        | Circular washer with a locking cutout.                            |
 | threaded_insert   | Representation of a threaded insert.                              |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
 | washer            | Circular washer with a circular hole.                             |
