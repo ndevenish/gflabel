@@ -3,3 +3,6 @@ __pycache__/
 .coverage
 .pytype/
 *.egg-info/
+dist/
+
+.DS_Store
