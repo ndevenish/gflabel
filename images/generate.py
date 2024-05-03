@@ -94,7 +94,7 @@ for style in [["slot"], ["pan,flanged"]]:
     command.extend([f"{{bolt(10,{text})}}", text, ""])
 
 # Webb-only
-for style in [["hex,security"]]:
+for style in [["partial"], ["hex", "security"]]:
     text = ",".join(style)
     command.extend(["", text, f"{{webbolt({text})}}"])
 

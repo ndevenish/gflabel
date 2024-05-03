@@ -361,7 +361,7 @@ class BoltBase(Fragment):
     # The options for head shape
     HEAD_SHAPES = {"countersunk", "pan", "round", "socket"}
     # Other, non-drive features
-    MODIFIERS = {"tapping", "flip"}
+    MODIFIERS = {"tapping", "flip", "partial"}
     # Other names that features can be known as, and what they map to
     FEATURE_ALIAS = {
         "countersink": "countersunk",
@@ -383,6 +383,7 @@ class BoltBase(Fragment):
 
         # A list of all modifier options that aren't drives
         self.modifiers = features & self.MODIFIERS
+        self.partial = "partial" in self.modifiers
         features -= self.MODIFIERS
 
         # Drives is everything left
@@ -590,6 +591,8 @@ class WebbBoltFragment(BoltBase):
             # Just shift the X origin. Not neat, but works.
             x0 += thread_pitch * 2
 
+        if self.partial:
+            n_threads = 3
         # Make a zig-zag for the bolt head.
         # Only the zig is added, the zag is implicit by connecting to
         # another zig immediately (or the explicit end-of-zag of the head)
@@ -599,6 +602,10 @@ class WebbBoltFragment(BoltBase):
                     (x0 + i * thread_pitch, thread_tip_height - thread_depth),
                     (x0 + (i + 0.5) * thread_pitch, thread_tip_height),
                 ]
+            )
+        if self.partial:
+            thread_lines.append(
+                (x0 + n_threads * thread_pitch, thread_tip_height - thread_depth)
             )
 
         with BuildSketch() as sketch:
