@@ -583,13 +583,13 @@ class WebbBoltFragment(BoltBase):
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         height *= self.overheight
         # 12 mm high for 15 mm wide. Scale to this.
-        width = 15 / 12 * height
+        width = 1.456 * height  # 15 / 12 * height
         # Relative proportion of body:head
-        body_w = width / 2
+        body_w = 0.856 * height  # width / 2
         # How many threads to have on the body
         n_threads = 6
         # How deep each thread profile should be
-        thread_depth = 0.5
+        thread_depth = 0.0707 * height
 
         # Calculated values
         head_w = width - body_w
@@ -599,7 +599,7 @@ class WebbBoltFragment(BoltBase):
 
         thread_pitch = body_w / n_threads
         thread_lines: list[tuple[float, float]] = [(x0, 0)]
-        thread_tip_height = height / 4 + thread_depth
+        thread_tip_height = (height / 4) + thread_depth
 
         if "tapping" in self.modifiers:
             thread_lines.append(

@@ -4,6 +4,8 @@
   the bottom part of the screw, representing a partially threaded bolt.
 - Added `lockwasher` for a locking washer. The size of this and the washer
   were slightly adjusted to be closer to the webb-style size.
+- Adjusted the proportions of `webbolt` to match the published version of the
+  system (this was previously measured off of preview screenshots).
 
 # GFLabel 0.1.2 (2024-05-03)
 
