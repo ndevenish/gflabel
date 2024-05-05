@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import functools
+import importlib.resources
+import io
+import itertools
+import json
 import logging
 import re
 import textwrap
+import zipfile
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from math import cos, radians, sin
@@ -34,6 +39,7 @@ from build123d import (
     Vector,
     add,
     fillet,
+    import_svg,
     make_face,
     mirror,
     offset,
@@ -898,6 +904,138 @@ def fragment_description_table() -> list[FragmentDescriptionRow]:
         )
     )
     return sorted(descriptions, key=lambda x: x.names[0])
+
+
+@functools.cache
+def _electronic_symbols_manifest():
+    with importlib.resources.files("gflabel").joinpath("chris-pikul-symbols.zip").open(
+        "rb"
+    ) as f:
+        zip = zipfile.ZipFile(f)
+        return json.loads(zip.read("manifest.json"))
+
+
+def _get_standard_requested(selectors: Iterable[str]) -> str | None:
+    """Given a list of selectors, did we ask for a standard?"""
+    aliases = {
+        "com": "common",
+        "ansi": "ieee",
+        "euro": "iec",
+        "europe": "iec",
+    }
+    # Convert this to a set and resolve aliases
+    requested = set(aliases.get(x.lower(), x.lower()) for x in selectors)
+    # Work out if a specific standard was requested
+    standards = {x.upper() for x in requested & {"iec", "ieee", "common"}}
+    if len(standards) > 1:
+        raise ValueError(
+            f"Got more than one symbol standard selected: '{', '.join(standards)}'"
+        )
+    return next(iter(standards), None)
+
+
+def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
+    """
+    Match a symbol in the electronics manifest.
+
+    Returns:
+        Exact filename. If no result, a ValueError will be raised.
+    """
+    # Convert this to a set and resolve aliases
+    aliases: dict[str, str] = {}
+    requested = set(aliases.get(x.lower(), x.lower()) for x in selectors)
+
+    standard_req = _get_standard_requested(requested)
+    # Make a standard order to discriminate otherwise matches
+    standards_order = ["common", "iec", "ieee"]
+    if standard_req:
+        standards_order.remove(standard_req)
+        standards_order.insert(0, standard_req)
+
+    manifest = _electronic_symbols_manifest()
+
+    # Firstly, have we been given an exact name or filename
+    matches = [
+        x
+        for x in manifest
+        if {x["name"].lower(), x["id"].lower(), x["filename"].lower()} & requested
+    ]
+    if len(matches) == 1:
+        logger.debug("Found exact electronic symbol match: %s", repr(matches[0]))
+        return matches[0]["filename"]
+    elif len(matches) > 1:
+        logger.debug(
+            "Found multiple symbol matches:\n"
+            + "\n".join([f"  - {x!r}" for x in matches])
+        )
+
+        # Given a match, see if we can find a preference with standard
+        def _get_standard(x):
+            return x["standard"].lower()
+
+        _, grouped_match = itertools.groupby(
+            sorted(matches, key=lambda x: standards_order.index(_get_standard(x))),
+            key=_get_standard,
+        )
+        if len(gm := list(grouped_match)) == 1:
+            logger.debug(
+                f"Discriminated down to {gm[0]['id']} from standard preference"
+            )
+            return gm[0]["filename"]
+
+    raise NotImplementedError("Symbol selection beyond basic not working yet")
+    ####################################################################
+    # No exact match, so we have to do filtering.
+
+    # Next, work out if a specific category was requested. If so,
+    # then only consider elements in that category
+    CATEGORIES = {x["category"].lower() for x in manifest} + {
+        x["subCategory"].lower() for x in manifest
+    }
+
+    raise ValueError(
+        f"Could not resolve electronic symbol from '{','.join(selectors)}'"
+    )
+
+
+@fragment("symbol", "sym")
+class _electrical_symbol_fragment(Fragment):
+    def __init__(self, *selectors: str):
+        self.symbol_filename = _match_electronic_symbol_with_selectors(selectors)
+        with importlib.resources.files("gflabel").joinpath(
+            "chris-pikul-symbols.zip"
+        ).open("rb") as f:
+            zip = zipfile.ZipFile(f)
+            # return json.loads(zip.read("manifest.json"))
+            svg_data = io.StringIO(
+                zip.read("SVG/" + self.symbol_filename + ".svg").decode()
+            )
+            self.shapes = import_svg(svg_data)
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        LINE_HWIDTH = 0.2
+        with BuildSketch() as _sketch:
+            # Work out the bounding area of the SVG so we can resize/center it
+            bbox = None
+            for edge in self.shapes.edges():
+                box = edge.bounding_box()
+                bbox = box if bbox is None else bbox.add(box)  # type: ignore
+            if bbox is None:
+                raise RuntimeError("Error: Found no edges in imported SVG")
+            # Translating to centered on origin
+            dxy = Vector(
+                X=-bbox.min.X - bbox.size.X / 2, Y=-bbox.min.Y - bbox.size.Y / 2
+            )
+            scale = height / (bbox.size.Y)
+
+            for edge in self.shapes.wires():
+                with BuildLine() as _line:
+                    a = offset(edge.translate(dxy).scale(scale), LINE_HWIDTH)
+                    add(a)
+                make_face()
+        bb = _sketch.sketch.bounding_box()
+        # Resize this to match the requested height
+        return _sketch.sketch.scale(height / bb.size.Y)
 
 
 if __name__ == "__main__":
