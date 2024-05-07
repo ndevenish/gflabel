@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import importlib.resources
 import io
+import itertools
 import json
 import logging
 import re
@@ -45,6 +46,7 @@ from build123d import (
 )
 
 from .options import RenderOptions
+from .util import format_table
 
 logger = logging.getLogger(__name__)
 RE_FRAGMENT = re.compile(r"(.+?)(?:\((.*)\))?$")
@@ -963,24 +965,28 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
         logger.debug("Found exact electronic symbol match: %s", repr(matches[0]))
         return matches[0]["filename"]
     elif len(matches) > 1:
+        cols = ["ID", "Category", "Name", "Standard", "Filename"]
         logger.debug(
-            "Found multiple symbol matches:\n"
-            + "\n".join([f"  - {x!r}" for x in matches])
+            f"Found multiple electronic symbol matches for definition \"{','.join(requested)}\":"
+            + "\n"
+            + "\n".join(format_table(cols, matches, lambda x: x.lower(), prefix="    "))
         )
 
         # Given a match, see if we can find a preference with standard
         def _get_standard(x):
             return x["standard"].lower()
 
-        # grouped_match = itertools.groupby(
-        #     sorted(matches, key=lambda x: standards_order.index(_get_standard(x))),
-        #     key=_get_standard,
-        # )
-        # if len(gm := [list(x) for _, x in grouped_match]) == 1:
-        #     logger.debug(
-        #         f"Discriminated down to {gm[0]['id']} from standard preference"
-        #     )
-        #     return gm[0]["filename"]
+        grouped_match = itertools.groupby(
+            sorted(matches, key=lambda x: standards_order.index(_get_standard(x))),
+            key=_get_standard,
+        )
+        first_group = list(next(iter(grouped_match), [[]])[1])
+        if len(first_group) == 1:
+            logger.debug(
+                f"Using symbol \"{first_group[0]['id']}\" because standard [b]{first_group[0]['standard']}[/b] is preferred.",
+                extra={"markup": True},
+            )
+            return first_group[0]["filename"]
 
     raise NotImplementedError("Symbol selection beyond basic not working yet")
     ####################################################################

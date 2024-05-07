@@ -18,6 +18,7 @@ from rich import print
 
 from . import fragments
 from .options import RenderOptions
+from .util import IndentingRichHandler
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,8 @@ class LabelRenderer:
                     - (row_height + self.opts.line_spacing_mm) * n
                     - row_height / 2
                 )
-                print(f"Rendering line {n} ({line}) at {render_y})")
+                logger.info(f'Rendering line {n+1} ("{line}")')
+                IndentingRichHandler.indent()
                 with Locations([(0, render_y)]):
                     add(
                         self._render_single_line(
@@ -99,6 +101,7 @@ class LabelRenderer:
                             self.opts.allow_overheight,
                         )
                     )
+                IndentingRichHandler.dedent()
 
         scale_to_maxwidth = area.X / sketch.sketch.bounding_box().size.X
         scale_to_maxheight = area.Y / sketch.sketch.bounding_box().size.Y
