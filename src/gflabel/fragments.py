@@ -3,7 +3,6 @@ from __future__ import annotations
 import functools
 import importlib.resources
 import io
-import itertools
 import json
 import logging
 import re
@@ -973,15 +972,15 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
         def _get_standard(x):
             return x["standard"].lower()
 
-        _, grouped_match = itertools.groupby(
-            sorted(matches, key=lambda x: standards_order.index(_get_standard(x))),
-            key=_get_standard,
-        )
-        if len(gm := list(grouped_match)) == 1:
-            logger.debug(
-                f"Discriminated down to {gm[0]['id']} from standard preference"
-            )
-            return gm[0]["filename"]
+        # grouped_match = itertools.groupby(
+        #     sorted(matches, key=lambda x: standards_order.index(_get_standard(x))),
+        #     key=_get_standard,
+        # )
+        # if len(gm := [list(x) for _, x in grouped_match]) == 1:
+        #     logger.debug(
+        #         f"Discriminated down to {gm[0]['id']} from standard preference"
+        #     )
+        #     return gm[0]["filename"]
 
     raise NotImplementedError("Symbol selection beyond basic not working yet")
     ####################################################################
@@ -1006,36 +1005,17 @@ class _electrical_symbol_fragment(Fragment):
             "chris-pikul-symbols.zip"
         ).open("rb") as f:
             zip = zipfile.ZipFile(f)
-            # return json.loads(zip.read("manifest.json"))
             svg_data = io.StringIO(
                 zip.read("SVG/" + self.symbol_filename + ".svg").decode()
             )
             self.shapes = import_svg(svg_data)
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
-        LINE_HWIDTH = 0.2
         with BuildSketch() as _sketch:
-            # Work out the bounding area of the SVG so we can resize/center it
-            bbox = None
-            for edge in self.shapes.edges():
-                box = edge.bounding_box()
-                bbox = box if bbox is None else bbox.add(box)  # type: ignore
-            if bbox is None:
-                raise RuntimeError("Error: Found no edges in imported SVG")
-            # Translating to centered on origin
-            dxy = Vector(
-                X=-bbox.min.X - bbox.size.X / 2, Y=-bbox.min.Y - bbox.size.Y / 2
-            )
-            scale = height / (bbox.size.Y)
-
-            for edge in self.shapes.wires():
-                with BuildLine() as _line:
-                    a = offset(edge.translate(dxy).scale(scale), LINE_HWIDTH)
-                    add(a)
-                make_face()
+            add(self.shapes)
         bb = _sketch.sketch.bounding_box()
-        # Resize this to match the requested height
-        return _sketch.sketch.scale(height / bb.size.Y)
+        # Resize this to match the requested height, and to be centered
+        return _sketch.sketch.translate(-bb.center()).scale(height / bb.size.Y)
 
 
 if __name__ == "__main__":
