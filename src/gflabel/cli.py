@@ -35,6 +35,7 @@ from . import fragments
 from .bases import plain, pred, webb
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
+from .util import IndentingRichHandler
 
 logger = logging.getLogger(__name__)
 
@@ -184,10 +185,20 @@ def run(argv: list[str] | None = None):
         default=2,
         type=float,
     )
+    parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     args = parser.parse_args(argv)
 
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        handlers=[
+            IndentingRichHandler(
+                show_time=args.verbose,
+                show_level=args.verbose,
+                show_path=args.verbose,
+                log_time_format="[%Y-%m-%d %H:%M:%S]",
+            )
+        ],
+        format="%(message)s",
     )
     logging.getLogger("websockets").setLevel(logging.WARNING)
     logging.getLogger("build123d").setLevel(logging.WARNING)
@@ -220,7 +231,7 @@ def run(argv: list[str] | None = None):
     args.labels = [x.replace("\\n", "\n") for x in args.labels]
 
     options = RenderOptions.from_args(args)
-    print(options)
+    logger.debug("Got render options: %s", options)
     with BuildPart() as part:
         y = 0
         if args.base == "pred":

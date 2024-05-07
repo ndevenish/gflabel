@@ -18,6 +18,7 @@
   tables).
 - Added `--gap` option, which when multiple labels are being generated, allows
   you to customise the gap between labels.
+- Made progress towards a more user-friendly console output.
 
 # GFLabel 0.1.3 (2024-05-03)
 
