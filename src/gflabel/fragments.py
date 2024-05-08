@@ -920,7 +920,7 @@ class ManifestItem(TypedDict):
 
 
 @functools.cache
-def _electronic_symbols_manifest() -> list[ManifestItem]:
+def electronic_symbols_manifest() -> list[ManifestItem]:
     with importlib.resources.files("gflabel").joinpath("chris-pikul-symbols.zip").open(
         "rb"
     ) as f:
@@ -982,7 +982,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
         standards_order.insert(0, standard_req.lower())
         requested.remove(standard_req.lower())
 
-    manifest = _electronic_symbols_manifest()
+    manifest = electronic_symbols_manifest()
 
     # Firstly, have we been given an exact ID, name or filename
     matches = [

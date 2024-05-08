@@ -8,6 +8,7 @@ import logging
 import sys
 from argparse import ArgumentParser
 from itertools import islice
+from typing import Any, Sequence
 
 import build123d as bd
 import rich
@@ -65,7 +66,6 @@ class ListFragmentsAction(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         table = rich.table.Table("NAMES", "DESCRIPTION")
-        table.add_row
 
         frags = fragments.fragment_description_table()
         multiline = [x for x in frags if len(x.description.splitlines()) > 1]
@@ -76,6 +76,31 @@ class ListFragmentsAction(argparse.Action):
             table.add_row(", ".join(frag.names), frag.description)
 
         rich.print(table)
+        sys.exit(0)
+
+
+class ListSymbolsAction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super().__init__(option_strings, dest, nargs=0, **kwargs)
+
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        manifest = fragments.electronic_symbols_manifest()
+        cols = ["ID", "Category", "Name", "Standard", "Filename"]
+        table = rich.table.Table(*cols)
+        for symbol in manifest:
+            table.add_row(*[symbol[x.lower()] for x in cols])  # type: ignore
+        rich.print(table)
+        rich.print(
+            "\nSymbol Library © Chris Pikul with MIT License https://github.com/chris-pikul/electronic-symbols"
+        )
         sys.exit(0)
 
 
@@ -178,6 +203,11 @@ def run(argv: list[str] | None = None):
         "--list-fragments",
         help="List all available fragments.",
         action=ListFragmentsAction,
+    )
+    parser.add_argument(
+        "--list-symbols",
+        help="List all available electronic symbols",
+        action=ListSymbolsAction,
     )
     parser.add_argument(
         "--gap",
