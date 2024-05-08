@@ -12,7 +12,7 @@ import zipfile
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from math import cos, radians, sin
-from typing import Any, Iterable, NamedTuple, Type
+from typing import Any, Iterable, NamedTuple, Type, TypedDict
 
 from build123d import (
     Align,
@@ -74,6 +74,10 @@ DRIVES = {
     "security",
     "phillipsslot",
 }
+
+
+class InvalidFragmentSpecification(RuntimeError):
+    pass
 
 
 def fragment_from_spec(spec: str) -> Fragment:
@@ -907,8 +911,16 @@ def fragment_description_table() -> list[FragmentDescriptionRow]:
     return sorted(descriptions, key=lambda x: x.names[0])
 
 
+class ManifestItem(TypedDict):
+    id: str
+    name: str
+    category: str
+    standard: str
+    filename: str
+
+
 @functools.cache
-def _electronic_symbols_manifest():
+def _electronic_symbols_manifest() -> list[ManifestItem]:
     with importlib.resources.files("gflabel").joinpath("chris-pikul-symbols.zip").open(
         "rb"
     ) as f:
@@ -935,6 +947,21 @@ def _get_standard_requested(selectors: Iterable[str]) -> str | None:
     return next(iter(standards), None)
 
 
+def _match_electronic_symbol_from_standard(
+    preferred_standards: list[str],
+    matches: list[ManifestItem],
+) -> list[ManifestItem]:
+    # IF all matches are in the same category, then choose based on standard.
+    def _get_standard(x):
+        return x["standard"].lower()
+
+    grouped_match = itertools.groupby(
+        sorted(matches, key=lambda x: preferred_standards.index(_get_standard(x))),
+        key=_get_standard,
+    )
+    return list(next(iter(grouped_match), [[]])[1])
+
+
 def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
     """
     Match a symbol in the electronics manifest.
@@ -946,61 +973,84 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
     aliases: dict[str, str] = {}
     requested = set(aliases.get(x.lower(), x.lower()) for x in selectors)
 
+    # Work out if we requested a standard
     standard_req = _get_standard_requested(requested)
     # Make a standard order to discriminate otherwise matches
     standards_order = ["common", "iec", "ieee"]
     if standard_req:
-        standards_order.remove(standard_req)
-        standards_order.insert(0, standard_req)
+        standards_order.remove(standard_req.lower())
+        standards_order.insert(0, standard_req.lower())
+        requested.remove(standard_req.lower())
 
     manifest = _electronic_symbols_manifest()
 
-    # Firstly, have we been given an exact name or filename
+    # Firstly, have we been given an exact ID, name or filename
     matches = [
         x
         for x in manifest
         if {x["name"].lower(), x["id"].lower(), x["filename"].lower()} & requested
     ]
     if len(matches) == 1:
-        logger.debug("Found exact electronic symbol match: %s", repr(matches[0]))
+        logger.debug("Found exact electronic symbol match: %s", repr(matches[0]["id"]))
         return matches[0]["filename"]
-    elif len(matches) > 1:
-        cols = ["ID", "Category", "Name", "Standard", "Filename"]
-        logger.debug(
-            f"Found multiple electronic symbol matches for definition \"{','.join(requested)}\":"
-            + "\n"
-            + "\n".join(format_table(cols, matches, lambda x: x.lower(), prefix="    "))
+
+    if not matches:
+        # We don't have any exact matches, so do fuzzy matching instead
+        logger.debug("No exact matches, using fuzzy matches instead")
+        # Split the request into a pool of matching tokens
+        match_tokens = set(itertools.chain(*[x.split() for x in requested]))
+        logger.debug(f"Using match soup: {match_tokens!r}")
+        for symbol in manifest:
+            # Create a soup for this symbol
+            soup = set(
+                itertools.chain(
+                    *[
+                        x.lower().split()
+                        for x in {symbol["category"], symbol["name"], symbol["id"]}
+                    ]
+                )
+            )
+            # Use this symbol if all of our tokens are in any of the soup
+            if all(any(cand in s for s in soup) for cand in match_tokens):
+                logger.debug(f"    {symbol['id']} was a complete match!")
+                matches.append(symbol)
+
+    if len(matches) == 1:
+        logger.debug("Found fuzzy symbol match: %s", repr(matches[0]["id"]))
+        return matches[0]["filename"]
+
+    if not matches:
+        raise InvalidFragmentSpecification(
+            f"Could find no matches for definition '{','.join(requested)}'"
         )
 
-        # Given a match, see if we can find a preference with standard
-        def _get_standard(x):
-            return x["standard"].lower()
+    # We have multiple matches. Try
+    logger.debug(f"Got {len(matches)} matches. Attempting to refine.")
 
-        grouped_match = itertools.groupby(
-            sorted(matches, key=lambda x: standards_order.index(_get_standard(x))),
-            key=_get_standard,
-        )
-        first_group = list(next(iter(grouped_match), [[]])[1])
-        if len(first_group) == 1:
+    if len({x["category"] for x in matches}) == 1:
+        matches = _match_electronic_symbol_from_standard(standards_order, matches)
+        if len(matches) == 1:
             logger.debug(
-                f"Using symbol \"{first_group[0]['id']}\" because standard [b]{first_group[0]['standard']}[/b] is preferred.",
+                f"Using symbol \"{matches[0]['id']}\" because standard [b]{matches[0]['standard']}[/b] is preferred.",
                 extra={"markup": True},
             )
-            return first_group[0]["filename"]
-
-    raise NotImplementedError("Symbol selection beyond basic not working yet")
-    ####################################################################
-    # No exact match, so we have to do filtering.
-
-    # Next, work out if a specific category was requested. If so,
-    # then only consider elements in that category
-    CATEGORIES = {x["category"].lower() for x in manifest} + {
-        x["subCategory"].lower() for x in manifest
-    }
-
-    raise ValueError(
-        f"Could not resolve electronic symbol from '{','.join(selectors)}'"
-    )
+            return matches[0]["filename"]
+        else:
+            logger.debug(
+                f"Preferred standard was not enough to discriminate, {len(matches)} equivalent matches"
+            )
+    if matches:
+        cols = ["ID", "Category", "Name", "Standard", "Filename"]
+        logger.error(
+            f"Could not decide on symbol from specification \"{','.join(requested)}\". Possible options:"
+            + "\n"
+            + "\n".join(format_table(cols, matches, lambda x: x.lower(), prefix="    "))  # type: ignore
+        )
+    else:
+        logger.error(
+            f"No electronic symbols matched the specification \"{','.join(requested)}\""
+        )
+    raise InvalidFragmentSpecification("Please specify symbol more precisely.")
 
 
 @fragment("symbol", "sym")
@@ -1014,7 +1064,7 @@ class _electrical_symbol_fragment(Fragment):
             svg_data = io.StringIO(
                 zip.read("SVG/" + self.symbol_filename + ".svg").decode()
             )
-            self.shapes = import_svg(svg_data)
+            self.shapes = import_svg(svg_data, flip_y=False)
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         with BuildSketch() as _sketch:
