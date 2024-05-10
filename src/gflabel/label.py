@@ -139,8 +139,9 @@ class LabelRenderer:
                     area.X,
                     bbox_w,
                 )
+            print_spec = spec.replace("\n", "\\n")
             print(
-                f'Entry "{spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {area.X})'
+                f'Entry "{print_spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {area.X})'
             )
             return second_try
         print(
