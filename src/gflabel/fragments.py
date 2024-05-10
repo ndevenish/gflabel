@@ -962,7 +962,7 @@ def _match_electronic_symbol_from_standard(
     return list(next(iter(grouped_match), [[]])[1])
 
 
-def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
+def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> ManifestItem:
     """
     Match a symbol in the electronics manifest.
 
@@ -992,7 +992,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
     ]
     if len(matches) == 1:
         logger.debug("Found exact electronic symbol match: %s", repr(matches[0]["id"]))
-        return matches[0]["filename"]
+        return matches[0]
 
     if not matches:
         # We don't have any exact matches, so do fuzzy matching instead
@@ -1017,7 +1017,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
 
     if len(matches) == 1:
         logger.debug("Found fuzzy symbol match: %s", repr(matches[0]["id"]))
-        return matches[0]["filename"]
+        return matches[0]
 
     if not matches:
         raise InvalidFragmentSpecification(
@@ -1034,7 +1034,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
                 f"Using symbol \"{matches[0]['id']}\" because standard [b]{matches[0]['standard']}[/b] is preferred.",
                 extra={"markup": True},
             )
-            return matches[0]["filename"]
+            return matches[0]
         else:
             logger.debug(
                 f"Preferred standard was not enough to discriminate, {len(matches)} equivalent matches"
@@ -1056,13 +1056,14 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> str:
 @fragment("symbol", "sym")
 class _electrical_symbol_fragment(Fragment):
     def __init__(self, *selectors: str):
-        self.symbol_filename = _match_electronic_symbol_with_selectors(selectors)
+        self.symbol = _match_electronic_symbol_with_selectors(selectors)
+
         with importlib.resources.files("gflabel").joinpath(
             "chris-pikul-symbols.zip"
         ).open("rb") as f:
             zip = zipfile.ZipFile(f)
             svg_data = io.StringIO(
-                zip.read("SVG/" + self.symbol_filename + ".svg").decode()
+                zip.read("SVG/" + self.symbol["filename"] + ".svg").decode()
             )
             self.shapes = import_svg(svg_data, flip_y=False)
 
