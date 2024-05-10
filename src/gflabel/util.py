@@ -30,6 +30,7 @@ def format_table(
     rows: list[dict[str, str]],
     row_selector: Callable[[str], str] | None = None,
     prefix="",
+    rich_header: bool = True,
 ) -> list[str]:
     """Very simple table formatter"""
     lines = []
@@ -37,7 +38,10 @@ def format_table(
     max_lens = [
         max(len(h), *[len(row[row_selector(h)]) for row in rows]) for h in headers
     ]
-    lines.append(prefix + " ".join([f"{h:{w}}" for h, w in zip(headers, max_lens)]))
+    headings = [f"{h:{w}}" for h, w in zip(headers, max_lens)]
+    if rich_header:
+        headings = [f"[b]{x}[/b]" for x in headings]
+    lines.append(prefix + " ".join(headings))
     for row in rows:
         lines.append(
             prefix
