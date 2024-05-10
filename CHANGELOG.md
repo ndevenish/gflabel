@@ -19,6 +19,11 @@
 - Added `--gap` option, which when multiple labels are being generated, allows
   you to customise the gap between labels.
 - Made progress towards a more user-friendly console output.
+- Add fragment `symbol(...)`. This rendered electronic symbols, taken from
+  Chris Pikul' [electronic-symbols][christ-pikul] diagrams. Not all of the
+  symbols currently render without issue.
+
+[chris-pikul]: https://github.com/chris-pikul/electronic-symbols
 
 # GFLabel 0.1.3 (2024-05-03)
 

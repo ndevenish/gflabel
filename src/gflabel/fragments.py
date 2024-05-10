@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import functools
+import importlib.resources
+import io
+import itertools
+import json
 import logging
 import re
 import textwrap
+import zipfile
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from math import cos, radians, sin
-from typing import Any, Iterable, NamedTuple, Type
+from typing import Any, Iterable, NamedTuple, Type, TypedDict
 
 from build123d import (
     Align,
@@ -34,12 +39,14 @@ from build123d import (
     Vector,
     add,
     fillet,
+    import_svg,
     make_face,
     mirror,
     offset,
 )
 
 from .options import RenderOptions
+from .util import format_table
 
 logger = logging.getLogger(__name__)
 RE_FRAGMENT = re.compile(r"(.+?)(?:\((.*)\))?$")
@@ -67,6 +74,10 @@ DRIVES = {
     "security",
     "phillipsslot",
 }
+
+
+class InvalidFragmentSpecification(RuntimeError):
+    pass
 
 
 def fragment_from_spec(spec: str) -> Fragment:
@@ -900,6 +911,194 @@ def fragment_description_table() -> list[FragmentDescriptionRow]:
     return sorted(descriptions, key=lambda x: x.names[0])
 
 
+class ManifestItem(TypedDict):
+    id: str
+    name: str
+    category: str
+    standard: str
+    filename: str
+
+
+@functools.cache
+def electronic_symbols_manifest() -> list[ManifestItem]:
+    with importlib.resources.files("gflabel").joinpath("chris-pikul-symbols.zip").open(
+        "rb"
+    ) as f:
+        zip = zipfile.ZipFile(f)
+        return json.loads(zip.read("manifest.json"))
+
+
+def _get_standard_requested(selectors: Iterable[str]) -> str | None:
+    """Given a list of selectors, did we ask for a standard?"""
+    aliases = {
+        "com": "common",
+        "ansi": "ieee",
+        "euro": "iec",
+        "europe": "iec",
+    }
+    # Convert this to a set and resolve aliases
+    requested = set(aliases.get(x.lower(), x.lower()) for x in selectors)
+    # Work out if a specific standard was requested
+    standards = {x.upper() for x in requested & {"iec", "ieee", "common"}}
+    if len(standards) > 1:
+        raise ValueError(
+            f"Got more than one symbol standard selected: '{', '.join(standards)}'"
+        )
+    return next(iter(standards), None)
+
+
+def _match_electronic_symbol_from_standard(
+    preferred_standards: list[str],
+    matches: list[ManifestItem],
+) -> list[ManifestItem]:
+    # IF all matches are in the same category, then choose based on standard.
+    def _get_standard(x):
+        return x["standard"].lower()
+
+    grouped_match = itertools.groupby(
+        sorted(matches, key=lambda x: preferred_standards.index(_get_standard(x))),
+        key=_get_standard,
+    )
+    return list(next(iter(grouped_match), [[]])[1])
+
+
+def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> ManifestItem:
+    """
+    Match a symbol in the electronics manifest.
+
+    Returns:
+        The manifest entry. If no result, a ValueError will be raised.
+    """
+    # Convert this to a set and resolve aliases
+    aliases: dict[str, str] = {}
+    requested = set(
+        aliases.get(x.lower(), x.lower())
+        .removesuffix(".svg")
+        .removesuffix(".png")
+        .removesuffix(".jpg")
+        for x in selectors
+    )
+
+    # Work out if we requested a standard
+    standard_req = _get_standard_requested(requested)
+    # Make a standard order to discriminate otherwise matches
+    standards_order = ["common", "iec", "ieee"]
+    if standard_req:
+        standards_order.remove(standard_req.lower())
+        standards_order.insert(0, standard_req.lower())
+        requested.remove(standard_req.lower())
+
+    manifest = electronic_symbols_manifest()
+
+    # Firstly, have we been given an exact ID, name or filename
+    matches = [
+        x
+        for x in manifest
+        if {
+            x["name"].lower(),
+            x["id"].lower(),
+            x["filename"].lower(),
+            # We handle standard separately, but accept exact name
+            # with/without it - some of the source components have it
+            x["name"]
+            .lower()
+            .replace(" (IEEE/ANSI)", "")
+            .replace(" (Common Style)", ""),
+        }
+        & requested
+    ]
+    if len(matches) == 1:
+        logger.debug("Found exact electronic symbol match: %s", repr(matches[0]["id"]))
+        return matches[0]
+
+    if not matches:
+        # We don't have any exact matches, so do fuzzy matching instead
+        logger.debug("No exact matches, using fuzzy matches instead")
+        # Split the request into a pool of matching tokens
+        match_tokens = set(itertools.chain(*[x.split() for x in requested]))
+        logger.debug(f"Using match soup: {match_tokens!r}")
+        for symbol in manifest:
+            # Create a soup for this symbol
+            soup = set(
+                itertools.chain(
+                    *[
+                        x.lower().split()
+                        for x in {symbol["category"], symbol["name"], symbol["id"]}
+                    ]
+                )
+            )
+            if "logic" in soup:
+                soup.add("gate")
+            # Use this symbol if all of our tokens are in any of the soup
+            if all(any(cand in s for s in soup) for cand in match_tokens):
+                logger.debug(f"    {symbol['id']} was a complete match!")
+                matches.append(symbol)
+
+    if len(matches) == 1:
+        logger.debug("Found fuzzy symbol match: %s", repr(matches[0]["id"]))
+        return matches[0]
+
+    if not matches:
+        raise InvalidFragmentSpecification(
+            f"Could find no matches for definition '{','.join(requested)}'"
+        )
+
+    # We have multiple matches. Try
+    logger.debug(f"Got {len(matches)} matches. Attempting to refine.")
+
+    if len({x["category"] for x in matches}) == 1:
+        matches = _match_electronic_symbol_from_standard(standards_order, matches)
+        if len(matches) == 1:
+            logger.debug(
+                f"Using symbol \"{matches[0]['id']}\" because standard [b]{matches[0]['standard']}[/b] is preferred.",
+                extra={"markup": True},
+            )
+            return matches[0]
+        else:
+            logger.debug(
+                f"Preferred standard was not enough to discriminate, {len(matches)} equivalent matches"
+            )
+    if matches:
+        cols = ["ID", "Category", "Name", "Standard", "Filename"]
+        logger.error(
+            f"Could not decide on symbol from fuzzy specification \"{','.join(requested)}\". Possible options:"
+            + "\n"
+            + "\n".join(
+                format_table(cols, matches, lambda x: x.lower(), prefix="    ")
+            ),  # type: ignore
+            extra={"markup": "True"},
+        )
+    else:
+        logger.error(
+            f"No electronic symbols matched the specification \"{','.join(requested)}\""
+        )
+    raise InvalidFragmentSpecification("Please specify symbol more precisely.")
+
+
+@fragment("symbol", "sym")
+class _electrical_symbol_fragment(Fragment):
+    """Render an electronic symbol."""
+
+    def __init__(self, *selectors: str):
+        self.symbol = _match_electronic_symbol_with_selectors(selectors)
+
+        with importlib.resources.files("gflabel").joinpath(
+            "chris-pikul-symbols.zip"
+        ).open("rb") as f:
+            zip = zipfile.ZipFile(f)
+            svg_data = io.StringIO(
+                zip.read("SVG/" + self.symbol["filename"] + ".svg").decode()
+            )
+            self.shapes = import_svg(svg_data, flip_y=False)
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        with BuildSketch() as _sketch:
+            add(self.shapes)
+        bb = _sketch.sketch.bounding_box()
+        # Resize this to match the requested height, and to be centered
+        return _sketch.sketch.translate(-bb.center()).scale(height / bb.size.Y)
+
+
 if __name__ == "__main__":
     # Generate a markdown table of fragment definitions
     frags = fragment_description_table()
@@ -913,6 +1112,8 @@ if __name__ == "__main__":
     for frag in frags:
 
         def _clean(s):
+            if s is None:
+                return ""
             return s.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
 
         desc = _clean(frag.description)

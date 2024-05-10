@@ -8,6 +8,7 @@ import logging
 import sys
 from argparse import ArgumentParser
 from itertools import islice
+from typing import Any, Sequence
 
 import build123d as bd
 import rich
@@ -65,7 +66,6 @@ class ListFragmentsAction(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         table = rich.table.Table("NAMES", "DESCRIPTION")
-        table.add_row
 
         frags = fragments.fragment_description_table()
         multiline = [x for x in frags if len(x.description.splitlines()) > 1]
@@ -76,6 +76,31 @@ class ListFragmentsAction(argparse.Action):
             table.add_row(", ".join(frag.names), frag.description)
 
         rich.print(table)
+        sys.exit(0)
+
+
+class ListSymbolsAction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super().__init__(option_strings, dest, nargs=0, **kwargs)
+
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        manifest = fragments.electronic_symbols_manifest()
+        cols = ["ID", "Category", "Name", "Standard", "Filename"]
+        table = rich.table.Table(*cols)
+        for symbol in manifest:
+            table.add_row(*[symbol[x.lower()] for x in cols])  # type: ignore
+        rich.print(table)
+        rich.print(
+            "\nSymbol Library © Chris Pikul with MIT License https://github.com/chris-pikul/electronic-symbols"
+        )
         sys.exit(0)
 
 
@@ -180,6 +205,11 @@ def run(argv: list[str] | None = None):
         action=ListFragmentsAction,
     )
     parser.add_argument(
+        "--list-symbols",
+        help="List all available electronic symbols",
+        action=ListSymbolsAction,
+    )
+    parser.add_argument(
         "--gap",
         help="Vertical gap (in mm) between physical labels. Default: %(default)s mm",
         default=2,
@@ -259,14 +289,18 @@ def run(argv: list[str] | None = None):
             all_labels = []
             for labels in batched(args.labels, args.divisions):
                 body_locations.append((0, y))
-                all_labels.append(
-                    render_divided_label(
-                        labels,
-                        label_area,
-                        divisions=args.divisions,
-                        options=options,
-                    ).locate(Location([0, y]))
-                )
+                try:
+                    all_labels.append(
+                        render_divided_label(
+                            labels,
+                            label_area,
+                            divisions=args.divisions,
+                            options=options,
+                        ).locate(Location([0, y]))
+                    )
+                except fragments.InvalidFragmentSpecification as e:
+                    rich.print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
+                    sys.exit(1)
                 y -= y_offset_each_label
             logger.debug("Combining all labels")
             add(all_labels)
@@ -291,11 +325,11 @@ def run(argv: list[str] | None = None):
             export_step(part.part, output)
         elif output.endswith(".svg"):
             max_dimension = max(label_sketch.sketch.bounding_box().size)
-            e = ExportSVG(scale=100 / max_dimension)
-            e.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
+            exporter = ExportSVG(scale=100 / max_dimension)
+            exporter.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
             logger.info(f"Writing SVG {output}")
-            e.add_shape(label_sketch.sketch, layer="Shapes")
-            e.write(output)
+            exporter.add_shape(label_sketch.sketch, layer="Shapes")
+            exporter.write(output)
         else:
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
