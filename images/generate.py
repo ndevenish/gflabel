@@ -122,21 +122,47 @@ if args.symbols:
         "-w=200",
         "--height=12",
         "--divisions=6",
-        "-o",
-        "symbols.svg",
+        "--font-size-maximum=5.3",
+        "--output=symbols.svg",
+        "--gap=3",
         *vscode,
     ]
     names: dict[str, list[str]] = {}
     for sym in manifest:
         names.setdefault(sym["name"], []).append(sym["name"])
-    i = 0
+    i = -20
     for sym in manifest:
+        # Skip symbols known to not work well here
+        if sym["id"] in {"transformer-com-center-double"}:
+            continue
+        i += 1
+        if i < 0:
+            continue
         name = sym["name"]
         # If we have the same symbol with different standard, say
         if len(names[name]) > 1:
             name += f" ({sym['standard']})"
-        command.extend([name, f"{{symbol({sym['id']})}}"])
-        i += 1
+        # Some very basic attempts at making some of these more readable
+        name = (
+            name.replace(" Flip-Flop", "\\nFlip-Flop")
+            .replace(" Capacitor", "\\nCapacitor")
+            .replace("Relay N", "Relay\\nN")
+            .replace("MOSFET ", "MOSFET\\n")
+            .replace("Pushbutton ", "Pushbutton\\n")
+            .replace("Variable Resistor", "Variable\\nResistor")
+            .replace("Relay (Common", "Relay\\n(Common")
+            .replace(") Converter", ")\\nConverter")
+            .replace("Potentiometer ", "Potentiometer\\n")
+            .replace("Wave Generator", "Wave\\nGenerator")
+            .replace("Controlled ", "Controlled\\n")
+            .replace("Photovoltaic Solar", "Photovoltaic\\nSolar")
+            .replace("Photoresistor ", "Photoresistor\\n")
+            .replace("-Pot ", "-Pot\\n")
+            .replace("Inductor ", "Inductor\\n")
+            .replace("Amplifier ", "Amplifier\\n")
+        )
+
+        command.extend([f"{name}", f"{{symbol({sym['id']})}}"])
         # if i > 20:
         #     break
     print("+ " + " ".join(command))
