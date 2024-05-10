@@ -1061,9 +1061,12 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
     if matches:
         cols = ["ID", "Category", "Name", "Standard", "Filename"]
         logger.error(
-            f"Could not decide on symbol from specification \"{','.join(requested)}\". Possible options:"
+            f"Could not decide on symbol from fuzzy specification \"{','.join(requested)}\". Possible options:"
             + "\n"
-            + "\n".join(format_table(cols, matches, lambda x: x.lower(), prefix="    "))  # type: ignore
+            + "\n".join(
+                format_table(cols, matches, lambda x: x.lower(), prefix="    ")
+            ),  # type: ignore
+            extra={"markup": "True"},
         )
     else:
         logger.error(

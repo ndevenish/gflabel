@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import textwrap
-from typing import Callable
+from collections.abc import Mapping
+from typing import Any, Callable, Sequence
 
 from rich.logging import RichHandler
 
@@ -27,7 +28,7 @@ class IndentingRichHandler(RichHandler):
 
 def format_table(
     headers: list[str],
-    rows: list[dict[str, str]],
+    rows: Sequence[Mapping[str, Any]],
     row_selector: Callable[[str], str] | None = None,
     prefix="",
     rich_header: bool = True,

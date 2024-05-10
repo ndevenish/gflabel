@@ -289,14 +289,18 @@ def run(argv: list[str] | None = None):
             all_labels = []
             for labels in batched(args.labels, args.divisions):
                 body_locations.append((0, y))
-                all_labels.append(
-                    render_divided_label(
-                        labels,
-                        label_area,
-                        divisions=args.divisions,
-                        options=options,
-                    ).locate(Location([0, y]))
-                )
+                try:
+                    all_labels.append(
+                        render_divided_label(
+                            labels,
+                            label_area,
+                            divisions=args.divisions,
+                            options=options,
+                        ).locate(Location([0, y]))
+                    )
+                except fragments.InvalidFragmentSpecification as e:
+                    rich.print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
+                    sys.exit(1)
                 y -= y_offset_each_label
             logger.debug("Combining all labels")
             add(all_labels)
@@ -321,11 +325,11 @@ def run(argv: list[str] | None = None):
             export_step(part.part, output)
         elif output.endswith(".svg"):
             max_dimension = max(label_sketch.sketch.bounding_box().size)
-            e = ExportSVG(scale=100 / max_dimension)
-            e.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
+            exporter = ExportSVG(scale=100 / max_dimension)
+            exporter.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
             logger.info(f"Writing SVG {output}")
-            e.add_shape(label_sketch.sketch, layer="Shapes")
-            e.write(output)
+            exporter.add_shape(label_sketch.sketch, layer="Shapes")
+            exporter.write(output)
         else:
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
