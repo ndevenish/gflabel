@@ -967,7 +967,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
     Match a symbol in the electronics manifest.
 
     Returns:
-        Exact filename. If no result, a ValueError will be raised.
+        The manifest entry. If no result, a ValueError will be raised.
     """
     # Convert this to a set and resolve aliases
     aliases: dict[str, str] = {}
