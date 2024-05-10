@@ -102,7 +102,8 @@ class LabelRenderer:
 
         scale_to_maxwidth = area.X / sketch.sketch.bounding_box().size.X
         scale_to_maxheight = area.Y / sketch.sketch.bounding_box().size.Y
-        if scale_to_maxheight < 1:
+
+        if scale_to_maxheight < 1 - 1e3:
             print(
                 f"Vertical scale is too high for area ({scale_to_maxheight}); downscaling"
             )
