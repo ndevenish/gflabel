@@ -994,7 +994,18 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
     matches = [
         x
         for x in manifest
-        if {x["name"].lower(), x["id"].lower(), x["filename"].lower()} & requested
+        if {
+            x["name"].lower(),
+            x["id"].lower(),
+            x["filename"].lower(),
+            # We handle standard separately, but accept exact name
+            # with/without it - some of the source components have it
+            x["name"]
+            .lower()
+            .replace(" (IEEE/ANSI)", "")
+            .replace(" (Common Style)", ""),
+        }
+        & requested
     ]
     if len(matches) == 1:
         logger.debug("Found exact electronic symbol match: %s", repr(matches[0]["id"]))
