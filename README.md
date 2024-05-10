@@ -177,6 +177,7 @@ A list of all the fragments currently recognised:
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
 | lockwasher        | Circular washer with a locking cutout.                            |
+| sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
 | washer            | Circular washer with a circular hole.                             |
@@ -221,4 +222,55 @@ Examples showing some differences between the two bolts:
 ![](images/bolts.svg)
 
 
+### Electronic Symbols
 
+Electronic symbols can be generated using the `{symbol(...)}` fragment.
+GFLabel is using the [Chris Pikul Electronic Symbols ][pikul] library kindly
+released under MIT Licence.
+
+[pikul]: https://github.com/chris-pikul/electronic-symbols
+
+There are currently three main approaches to selecting the symbol that you
+want:
+
+- Exact [ID][ID], or exact [Filename][files], as defined the original source.
+- Component name, as listed on the symbol source [README][pikul] (and in the
+  table below). In cases where multiple symbols have the same name, they can
+  be differentiated by standard e.g. `{symbol(capacitor,iec)}`. If standard is
+  not specified, and there are multiple matches, then the first of [`common`,
+  `iec`, `ieee`] will be chosen (if doing so makes it unambiguous).
+- Fuzzy matching. You can pass in words or parts of words. Symbols with
+  category, name or ID that match these (in any order) will be selected. If
+  more than one candidate symbols matches, then the table of possible matches
+  will be returned so that you can refine it further.
+
+You can list all of the symbols available with `gflabel --list-symbols`.
+
+For an example of this fuzzy matching, the fragment `{symbol(ground)}` isn't
+enough to disambiguate between the possible options, so the table of matches
+is printed to help you refine the definition:
+
+```
+$ gflabel '{symbol(ground)}'
+...
+Could not decide on symbol from fuzzy specification "ground". Possible options:
+    ID                 Category Name                  Standard Filename
+    ground-com-signal  GROUND   Digital/Signal Ground COMMON   Ground-COM-Signal
+    ground-com-general GROUND   Common/Earth Ground   COMMON   Ground-COM-General
+    ground-com-chassis GROUND   Chassis Ground        COMMON   Ground-COM-Chassis
+
+Could not proceed: Please specify symbol more precisely.
+```
+
+Given this, you could disambiguate by refining the fuzzy specification e.g.
+`{symbol(signal ground)}`, matching the exact name `{symbol(Common/Earth Ground)}`,
+or specifying the ID/Filename exactly: `{symbol(Ground-COM-Signal)}`.
+
+[ID]: https://github.com/chris-pikul/electronic-symbols/blob/main/manifest.json
+[files]: https://github.com/chris-pikul/electronic-symbols/tree/main/SVG
+
+Here is a table of all symbols, rendered by GFLabel, with their name as per the
+source symbol library. Note that for some of the symbols, they are rendered
+incorrectly. This is an unresolved bug in GFLabel.
+
+![](images/symbols.svg)
