@@ -118,9 +118,14 @@ class LabelRenderer:
             #     maxheight=maxheight * scale_to_maxwidth * 0.95,
             #     _rescaling=True,
             # )
+
+            # If we had an area that didn't fill the whole height, then we need
+            # to scale down THAT height, instead of the "total available" height
+            height_to_scale = min(area.Y, sketch.sketch.bounding_box().size.Y)
+
             second_try = self._do_multiline_render(
                 spec,
-                Vector(X=area.X, Y=area.Y * to_scale * 0.95),
+                Vector(X=area.X, Y=height_to_scale * to_scale * 0.95),
                 is_rescaling=True,
             )
             # If this didn't help, then error

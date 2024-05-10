@@ -8,6 +8,9 @@
 - Fixed occasional issue where labels would rerender themselves to correct
   minute scale differences (e.g. trying to scale down to correct a 99.9999999
   undersize).
+- Fixed issue where undersized fragments would downscale based on the height of
+  the full available area, instead of the actual undersized height it was
+  rendered at.
 
 # GFLabel 0.1.3 (2024-05-03)
 
