@@ -971,7 +971,13 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
     """
     # Convert this to a set and resolve aliases
     aliases: dict[str, str] = {}
-    requested = set(aliases.get(x.lower(), x.lower()) for x in selectors)
+    requested = set(
+        aliases.get(x.lower(), x.lower())
+        .removesuffix(".svg")
+        .removesuffix(".png")
+        .removesuffix(".jpg")
+        for x in selectors
+    )
 
     # Work out if we requested a standard
     standard_req = _get_standard_requested(requested)
