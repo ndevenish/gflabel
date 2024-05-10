@@ -1077,6 +1077,8 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
 
 @fragment("symbol", "sym")
 class _electrical_symbol_fragment(Fragment):
+    """Render an electronic symbol."""
+
     def __init__(self, *selectors: str):
         self.symbol = _match_electronic_symbol_with_selectors(selectors)
 
@@ -1110,6 +1112,8 @@ if __name__ == "__main__":
     for frag in frags:
 
         def _clean(s):
+            if s is None:
+                return ""
             return s.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
 
         desc = _clean(frag.description)
