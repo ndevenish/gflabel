@@ -1,3 +1,11 @@
+# GFLabel 0.1.4 (Unreleased)
+
+- Added option `--font-size-maximum`. If this is set (instead of `--font-size`)
+  then text will be allowed to shrink to fit the available space, but will not
+  get any larger than specified (in mm). This is different from `--font-size`,
+  which would force the text to be rendered at the same size, which risked
+  causing overflow when rendering many varied text fields.
+
 # GFLabel 0.1.3 (2024-05-03)
 
 - Add style `webbolt(partial)`. This causes a thread to be generated only on

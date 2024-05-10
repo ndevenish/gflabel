@@ -221,7 +221,7 @@ class TextFragment(Fragment):
         with BuildSketch() as sketch:
             Text(
                 self.text,
-                font_size=options.font.font_height_mm or height,
+                font_size=options.font.get_allowed_height(height),
                 font=options.font.font,
                 font_style=options.font.font_style,
             )
@@ -234,7 +234,7 @@ def _whitespace_width(spacechar: str, height: float, options: RenderOptions) -> 
     w2 = (
         Text(
             f"a{spacechar}a",
-            font_size=options.font.font_height_mm or height,
+            font_size=options.font.get_allowed_height(height),
             font=options.font.font,
             font_style=options.font.font_style,
             mode=Mode.PRIVATE,
@@ -245,7 +245,7 @@ def _whitespace_width(spacechar: str, height: float, options: RenderOptions) -> 
     wn = (
         Text(
             "aa",
-            font_size=options.font.font_height_mm or height,
+            font_size=options.font.get_allowed_height(height),
             font=options.font.font,
             font_style=options.font.font_style,
             mode=Mode.PRIVATE,

@@ -29,6 +29,15 @@ class FontOptions(NamedTuple):
     # Setting this can explicitly cause overflow, as the text will be
     # unable to scale down if required.
     font_height_mm: float | None = None
+    # Whether this is specifying exact font height
+    font_height_exact: bool = True
+
+    def get_allowed_height(self, requested_height: float) -> float:
+        """Calculate the font height, accounting for option specifications"""
+        if self.font_height_exact:
+            return self.font_height_mm or requested_height
+        else:
+            return min(self.font_height_mm or requested_height, requested_height)
 
 
 class RenderOptions(NamedTuple):
@@ -50,7 +59,8 @@ class RenderOptions(NamedTuple):
             font=FontOptions(
                 font=args.font,
                 font_style=font_style,
-                font_height_mm=args.font_size,
+                font_height_mm=args.font_size or args.font_size_maximum,
+                font_height_exact=not args.font_size_maximum,
             ),
             allow_overheight=not args.no_overheight,
         )

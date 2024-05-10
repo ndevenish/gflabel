@@ -135,11 +135,19 @@ def run(argv: list[str] | None = None):
         type=str,
         default="Futura",
     )
-    parser.add_argument(
+
+    font_size = parser.add_mutually_exclusive_group()
+    font_size.add_argument(
+        "--font-size-maximum",
+        help="Specify a maximum font size (in mm) to use for rendering. The text may end up smaller than this if it needs to fit in the area.",
+        type=float,
+    )
+    font_size.add_argument(
         "--font-size",
         help="The font size (in mm) to use for rendering. If unset, then the font will use as much vertical space as needed (that also fits within the horizontal area).",
         type=float,
     )
+
     parser.add_argument(
         "--font-style",
         help="The font style use for rendering. [Default: %(default)s]",
