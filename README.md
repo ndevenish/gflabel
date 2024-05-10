@@ -49,6 +49,14 @@ install directly from the github repo:
 ```
 pip install git+https://github.com/ndevenish/gflabel.git
 ```
+### VSCode Preview
+
+If you are using VSCode with the [vscode-ocp-cad-viewer][ocp-vscode] extension,
+you can add the `--vscode` flag when running `gflabel`, and the label should
+show up as a preview. This saves opening the output CAD files in a slicer or
+other viewer, and is useful when prototyping labels.
+
+[ocp-vscode]: https://github.com/bernhard-42/vscode-ocp-cad-viewer
 
 ### Basic Examples
 
