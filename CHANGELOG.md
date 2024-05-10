@@ -1,4 +1,4 @@
-# GFLabel 0.1.4 (Unreleased)
+# GFLabel 0.1.4 (2024-05-11)
 
 - Added option `--font-size-maximum`. If this is set (instead of `--font-size`)
   then text will be allowed to shrink to fit the available space, but will not
