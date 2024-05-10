@@ -1027,6 +1027,8 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
                     ]
                 )
             )
+            if "logic" in soup:
+                soup.add("gate")
             # Use this symbol if all of our tokens are in any of the soup
             if all(any(cand in s for s in soup) for cand in match_tokens):
                 logger.debug(f"    {symbol['id']} was a complete match!")
