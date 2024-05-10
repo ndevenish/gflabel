@@ -16,8 +16,8 @@ import rich.table
 # from build123d import *
 from build123d import (
     BuildPart,
+    BuildSketch,
     ColorIndex,
-    Compound,
     ExportSVG,
     FontStyle,
     Keep,
@@ -29,7 +29,6 @@ from build123d import (
     add,
     export_step,
     extrude,
-    section,
 )
 
 from . import fragments
@@ -163,8 +162,9 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "-o",
         "--output",
-        help="Output filename. [Default: %(default)s]",
-        default="label.step",
+        help="Output filename(s). [Default: %(default)s]",
+        default=["label.step"],
+        nargs="*",
     )
     parser.add_argument(
         "--style",
@@ -178,6 +178,12 @@ def run(argv: list[str] | None = None):
         help="List all available fragments.",
         action=ListFragmentsAction,
     )
+    parser.add_argument(
+        "--gap",
+        help="Vertical gap (in mm) between physical labels. Default: %(default)s mm",
+        default=2,
+        type=float,
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -186,7 +192,13 @@ def run(argv: list[str] | None = None):
     logging.getLogger("websockets").setLevel(logging.WARNING)
     logging.getLogger("build123d").setLevel(logging.WARNING)
 
+    logger.debug(f"Args: {args}")
+
+    # We cannot have debossed labels with no label
     assert not (args.base == "none" and args.style == LabelStyle.DEBOSSED)
+
+    # We don't need to generate 3D shapes if we are only doing SVG
+    is_2d = all([x.endswith(".svg") for x in args.output])
 
     # If running in VSCode mode, then we can hardcode a label here
     if not args.labels:
@@ -211,80 +223,73 @@ def run(argv: list[str] | None = None):
     print(options)
     with BuildPart() as part:
         y = 0
-        for labels in batched(args.labels, args.divisions):
-            with Locations([Location([0, y])]):
-                if args.base == "pred":
-                    body = pred.body(
-                        args.width, recessed=args.style == LabelStyle.EMBOSSED
-                    )
-                elif args.base == "plain":
-                    if args.width < 10:
-                        logger.warning(
-                            f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
-                        )
-                    body = plain.body(args.width, args.height)
-                elif args.base == "webb":
-                    body = webb.body()
-                else:
-                    body = None
-
-                if body:
-                    y -= body.part.bounding_box().size.Y + 2
-                    add(body.part)
-                    label_area = body.area
-                else:
-                    y -= args.height + 2
-                    label_area = Vector(X=args.width, Y=args.height)
-
-                add(
-                    render_divided_label(
-                        labels, label_area, divisions=args.divisions, options=options
-                    )
+        if args.base == "pred":
+            body = pred.body(args.width, recessed=args.style == LabelStyle.EMBOSSED)
+        elif args.base == "plain":
+            if args.width < 10:
+                logger.warning(
+                    f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
                 )
-                extrude(
-                    amount=args.depth,
-                    mode=(
-                        Mode.ADD if args.style == LabelStyle.EMBOSSED else Mode.SUBTRACT
-                    ),
-                )
-
-    if args.output.endswith(".stl"):
-        bd.export_stl(part.part, args.output)
-    elif args.output.endswith(".step"):
-        export_step(part.part, args.output)
-    elif args.output.endswith(".svg"):
-        visible, hidden = part.part.project_to_viewport(
-            (0, 0, 50), viewport_up=(0, 1, 0)
-        )
-        max_dimension = max(*Compound(children=visible + hidden).bounding_box().size)
-
-        if args.base == "none":
-            print("Rendering from section")
-            lines = section(part.part, Plane.XY, height=args.depth / 2)
-            e = ExportSVG(scale=100 / max_dimension)
-            # max_dimension = max(*Compound(children=visible + _hidden).bounding_box().size)
-            e.add_layer(
-                "Visible",
-                fill_color=ColorIndex.BLACK,
-                # line_color=ColorIndex.BLACK,
-                line_weight=0.1,
-            )
-            e.add_shape(lines, layer="Visible")
-            e.write(args.output)
+            body = plain.body(args.width, args.height)
+        elif args.base == "webb":
+            body = webb.body()
         else:
-            exporter = ExportSVG(scale=100 / max_dimension)
-            exporter.add_layer("Visible", fill_color=ColorIndex.YELLOW)
-            # exporter.add_layer(
-            #     "Hidden", line_color=(99, 99, 99), line_type=LineType.ISO_DOT
-            # )
-            exporter.add_shape(visible, layer="Visible")
-            # exporter.add_shape(hidden, layer="Hidden")
-            exporter.write(args.output)
+            body = None
 
-    else:
-        print(f"Error: Do not understand output format '{args.output}'")
+        if body:
+            y_offset_each_label = body.part.bounding_box().size.Y + args.gap
+            label_area = body.area
+        else:
+            y_offset_each_label = args.height + args.gap
+            label_area = Vector(X=args.width, Y=args.height)
+
+        body_locations = []
+        with BuildSketch() as label_sketch:
+            all_labels = []
+            for labels in batched(args.labels, args.divisions):
+                body_locations.append((0, y))
+                all_labels.append(
+                    render_divided_label(
+                        labels,
+                        label_area,
+                        divisions=args.divisions,
+                        options=options,
+                    ).locate(Location([0, y]))
+                )
+                y -= y_offset_each_label
+            logger.debug("Combining all labels")
+            add(all_labels)
+
+        if not is_2d:
+            # Create all of the bases
+            if body:
+                logger.debug("Creating label bodies")
+                with Locations(body_locations):
+                    add(body.part)
+
+            logger.debug("Extruding labels")
+            extrude(
+                amount=args.depth,
+                mode=(Mode.ADD if args.style == LabelStyle.EMBOSSED else Mode.SUBTRACT),
+            )
+
+    for output in args.output:
+        if output.endswith(".stl"):
+            bd.export_stl(part.part, output)
+        elif output.endswith(".step"):
+            export_step(part.part, output)
+        elif output.endswith(".svg"):
+            max_dimension = max(label_sketch.sketch.bounding_box().size)
+            e = ExportSVG(scale=100 / max_dimension)
+            e.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
+            logger.info(f"Writing SVG {output}")
+            e.add_shape(label_sketch.sketch, layer="Shapes")
+            e.write(output)
+        else:
+            logger.error(f"Error: Do not understand output format '{args.output}'")
 
     if args.vscode:
+        # Export both step and stl in vscode_ocp mode
         bd.export_stl(part.part, "label.stl")
         export_step(part.part, "label.step")
         # Split the base for display as two colours

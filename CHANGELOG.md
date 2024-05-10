@@ -11,6 +11,13 @@
 - Fixed issue where undersized fragments would downscale based on the height of
   the full available area, instead of the actual undersized height it was
   rendered at.
+- Rework SVG rendering. SVG will now _only_ render the label fields, and will
+  not try to project the label base into the SVG. This is much faster, but also
+  ensures cleaner SVG output and avoids topology issues when trying to add more
+  and more data into the SVG projection (this is used to generate the example
+  tables).
+- Added `--gap` option, which when multiple labels are being generated, allows
+  you to customise the gap between labels.
 
 # GFLabel 0.1.3 (2024-05-03)
 
