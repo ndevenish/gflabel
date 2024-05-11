@@ -397,6 +397,7 @@ class BoltBase(Fragment):
         "tap": "tapping",
         "tapped": "tapping",
         "flipped": "flip",
+        "square": "socket",
     }
     DEFAULT_HEADSHAPE = "pan"
 
