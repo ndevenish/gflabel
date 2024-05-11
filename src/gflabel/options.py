@@ -10,6 +10,7 @@ from build123d import FontStyle
 class LabelStyle(Enum):
     EMBOSSED = auto()
     DEBOSSED = auto()
+    EMBEDDED = auto()
 
     @classmethod
     def _missing_(cls, value):

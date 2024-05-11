@@ -18,6 +18,7 @@ from build123d import (
     BuildPart,
     BuildSketch,
     ColorIndex,
+    Compound,
     ExportSVG,
     FontStyle,
     Keep,
@@ -227,7 +228,9 @@ def run(argv: list[str] | None = None):
     logger.debug(f"Args: {args}")
 
     # We cannot have debossed labels with no label
-    assert not (args.base == "none" and args.style == LabelStyle.DEBOSSED)
+    if args.base == "none" and args.style != LabelStyle.EMBOSSED:
+        logger.error("Error: Can only generate 'Embossed' style labels without a base.")
+        sys.exit(1)
 
     # We don't need to generate 3D shapes if we are only doing SVG
     is_2d = all([x.endswith(".svg") for x in args.output])
@@ -258,8 +261,12 @@ def run(argv: list[str] | None = None):
     logger.debug("Got render options: %s", options)
     with BuildPart() as part:
         y = 0
+        is_embossed = args.style == LabelStyle.EMBOSSED
         if args.base == "pred":
-            body = pred.body(args.width, recessed=args.style == LabelStyle.EMBOSSED)
+            body = pred.body(
+                args.width,
+                recessed=is_embossed,
+            )
         elif args.base == "predbox":
             body = pred.boxlabelbody(args.width)
         elif args.base == "plain":
@@ -281,7 +288,7 @@ def run(argv: list[str] | None = None):
             label_area = Vector(X=args.width, Y=args.height)
 
         body_locations = []
-        with BuildSketch() as label_sketch:
+        with BuildSketch(mode=Mode.PRIVATE) as label_sketch:
             all_labels = []
             for labels in batched(args.labels, args.divisions):
                 body_locations.append((0, y))
@@ -310,15 +317,26 @@ def run(argv: list[str] | None = None):
 
             logger.debug("Extruding labels")
             extrude(
-                amount=args.depth,
-                mode=(Mode.ADD if args.style == LabelStyle.EMBOSSED else Mode.SUBTRACT),
+                label_sketch.sketch,
+                amount=args.depth if is_embossed else -args.depth,
+                mode=(Mode.ADD if is_embossed else Mode.SUBTRACT),
             )
+    # label_parts = [part.part]
+    part.part.label = "Base"
+
+    if args.style == LabelStyle.EMBEDDED:
+        # We want to make new volumes for the label, making it flush
+        embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
+        embedded_label.label = "Label"
+        assembly = Compound([part.part, embedded_label])
+    else:
+        assembly = Compound(part.part)
 
     for output in args.output:
         if output.endswith(".stl"):
-            bd.export_stl(part.part, output)
+            bd.export_stl(assembly, output)
         elif output.endswith(".step"):
-            export_step(part.part, output)
+            export_step(assembly, output)
         elif output.endswith(".svg"):
             max_dimension = max(label_sketch.sketch.bounding_box().size)
             exporter = ExportSVG(scale=100 / max_dimension)
@@ -336,18 +354,27 @@ def run(argv: list[str] | None = None):
         if is_2d:
             show_parts.append(label_sketch.sketch)
         else:
-            bd.export_stl(part.part, "label.stl")
-            export_step(part.part, "label.step")
-            # Split the base for display as two colours
-            top = part.part.split(Plane.XY, keep=Keep.TOP)
-            if top:
-                show_parts.append(top)
+            bd.export_stl(assembly, "label.stl")
+            export_step(assembly, "label.step")
+            if args.style == LabelStyle.EMBEDDED:
+                show_parts.append(part.part)
+                show_cols.append(None)
+                show_parts.append(embedded_label)
                 show_cols.append((0.2, 0.2, 0.2))
-            if args.base != "none":
-                bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
-                if bottom.wrapped:
-                    show_parts.append(bottom)
-                    show_cols.append(None)
+            else:
+                # Split the base for display as two colours
+                top = part.part.split(
+                    Plane.XY if is_embossed else Plane.XY.offset(-args.depth),
+                    keep=Keep.TOP,
+                )
+                if top:
+                    show_parts.append(top)
+                    show_cols.append((0.2, 0.2, 0.2))
+                if args.base != "none":
+                    bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
+                    if bottom.wrapped:
+                        show_parts.append(bottom)
+                        show_cols.append(None)
 
         show(
             *show_parts,

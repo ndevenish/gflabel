@@ -11,6 +11,7 @@ from build123d import (
     CenterArc,
     Circle,
     FilletPolyline,
+    Location,
     Locations,
     Mode,
     Plane,
@@ -116,7 +117,12 @@ def body(width_u: int, recessed: bool = True) -> LabelBase:
         ]
         fillet(fillet_edges, radius=0.2)
 
-    return LabelBase(part.part, Vector(width_u * 42 - 4.2 - 5.5, 10.5))
+    area = Vector(width_u * 42 - 4.2 - 5.5, 10.5)
+    if recessed:
+        return LabelBase(part.part, area)
+
+    # We want the sketch at z=0 to cut in
+    return LabelBase(part.part.locate(Location((0, 0, -0.4))), area)
 
 
 def boxlabelbody(width_u: int) -> LabelBase:
