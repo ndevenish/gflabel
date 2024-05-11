@@ -131,6 +131,9 @@ class LabelRenderer:
 
             columns.append(label)
 
+        if not column_proportions:
+            column_proportions = [1]
+
         # Calculate column widths
         total_proportions = sum(column_proportions)
         column_gaps_width = self.opts.column_gap * (len(columns) - 1)
