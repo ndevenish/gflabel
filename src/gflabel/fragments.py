@@ -1125,6 +1125,8 @@ class SplitterFragment(Fragment):
 class AlignmentFragment(Fragment):
     """Only used at the start of a single label or column. Specifies that all lines in the area should be left or right aligned. Invalid when specified elsewhere."""
 
+    examples = ["{<}Left\nLines", "{>}Right"]
+
     def __init__(self, *args):
         raise InvalidFragmentSpecification(
             "Got Alignment fragment ({<} or {>}) not at the start of a label; for selective alignment please pad with {...}, or specify alignment in column division."
