@@ -82,28 +82,16 @@ class LabelRenderer:
             else:
                 return scoped_spec, None
 
-        spec, first_alignment = _handle_spec_alignment(spec)
-        column_alignments: list[str | None] = [first_alignment]
+        # spec, first_alignment = _handle_spec_alignment(spec)
 
         for label, *divider in batched(
             fragments.SplitterFragment.SPLIT_RE.split(spec), SPLIT_RE.groups + 1
         ):
-            alignment = column_alignments[-1]
-            label, inlabel_alignment = _handle_spec_alignment(label)
-            # Protect against both being specified e.g. no "{|>}{<}"
-            if inlabel_alignment and alignment:
-                raise fragments.InvalidFragmentSpecification(
-                    "Alignment has been specified on both column divider and at start of label."
-                )
-            # Either one of these, or neither of these, are set.
-            alignment = alignment or inlabel_alignment
+            label, alignment = _handle_spec_alignment(label)
 
             # The last round of this loop will not have any divider
             if divider:
                 split = fragments.SplitterFragment(*divider)
-                # This splitter definition gives us information about
-                # the next column
-                column_alignments.append(split.alignment)
                 if not column_proportions:
                     # We're the first divider, define both
                     column_proportions = [split.left, split.right]

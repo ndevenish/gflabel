@@ -14,9 +14,7 @@
   lines in a column, the padding fragment `{...}` can still be used.
 - Add fragment `{|}`. This allows you to designate columns between which
   the text area will be split. You can specify the ratio of column widths
-  by specifying the proportions in the fragment e.g. `{2|1}`. You can also
-  specify the alignment of the column following the divider within the
-  fragment specification e.g. `{|>}`.
+  by specifying the proportions in the fragment e.g. `{2|1}`.
 - Added new option `--column-gap`, that specifies the gap between columns when
   using the column specification fragment.
 - Added a `{measure}` fragment, that shows column widths. This can be useful

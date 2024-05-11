@@ -1097,7 +1097,7 @@ class SplitterFragment(Fragment):
     """Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment."""
 
     _SIIF = r"(\d*(?:\d[.]|[.]\d)?\d*)"  # Parses a simple int or float
-    SPLIT_RE: ClassVar[re.Pattern] = re.compile(f"\\{{{_SIIF}\\|{_SIIF}([<>]?)}}")
+    SPLIT_RE: ClassVar[re.Pattern] = re.compile(f"\\{{{_SIIF}\\|{_SIIF}}}")
 
     alignment: str | None
 
@@ -1105,15 +1105,11 @@ class SplitterFragment(Fragment):
         self,
         left: str | None = None,
         right: str | None = None,
-        alignment: str | None = None,
         *args: list[Any],
     ):
         assert not args
         self.left = float(left or 1)
         self.right = float(right or 1)
-        self.alignment = alignment or None
-        if self.alignment not in {None, "<", ">"}:
-            raise ValueError(f"Unknown alignment specifier: {self.alignment!r}")
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         # This should never happen; for now. We might decide to add
