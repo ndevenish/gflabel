@@ -109,34 +109,76 @@ gflabel --base=webb --font=Arial "M3×20{...}{webbolt(+)}"
 ```
 ![](images/example_webb.png)
 
-## Command Parameters
-
-Core command parameters (call `gflabel --help` for the full list):
+Here's a more complex example, generating a [Pred Gridfinity Storage Box][predbox]
+label. This uses multiple proportioned columns, symbols, and alignment:
 
 ```
-usage: gflabel [options] LABEL [LABEL ...]
+gflabel --base=predbox -w 5 "HEX\n{head(hex)} {bolt(5)}{3|}{<}M2\nM3\nM4\nM5{2|2}{<}M6\nM8\nM10\n"
+```
+
+![](images/example_hex.png)
+
+## Command Parameters
+
+The full command parameter usage (as generate by `gflabel --help`):
+
+```
+usage: gflabel [-h] [--base {pred,plain,none,webb,predbox}] [--vscode] [-w WIDTH]
+               [--height HEIGHT] [--depth DEPTH_MM] [--no-overheight] [-d DIVISIONS]
+               [--font FONT]
+               [--font-size-maximum FONT_SIZE_MAXIMUM | --font-size FONT_SIZE]
+               [--font-style {regular,bold,italic}] [--margin MARGIN]
+               [-o [OUTPUT ...]] [--style {embossed,debossed,embedded}]
+               [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP]
+               [--column-gap COLUMN_GAP] [-v]
+               LABEL [LABEL ...]
+
+Generate gridfinity bin labels
+
+positional arguments:
+  LABEL
 
 options:
-  --base {pred,plain,none,webb}
+  -h, --help            show this help message and exit
+  --base {pred,plain,none,webb,predbox}
                         Label base to generate onto. [Default: pred]
   --vscode              Run in vscode_ocp mode, and show the label afterwards.
   -w WIDTH, --width WIDTH
-                        Label width. If using a gridfinity standard base, then
-                        this is width in U. Otherwise, width in mm.
-  --height HEIGHT       Label height, in mm. Ignored for fixed-height bases.
+                        Label width. If using a gridfinity standard base, then this is
+                        width in U. Otherwise, width in mm.
+  --height HEIGHT       Label height, in mm. Ignored for standardised label bases.
   --depth DEPTH_MM      How high (or deep) the label extrusion is.
-  --divisions DIVISIONS
-                        How many areas to divide a single label into. If more
-                        labels that this are requested, multiple labels will be
-                        generated. Default: 1.
+  --no-overheight       Disable the 'Overheight' system. This allows some symbols to
+                        oversize, meaning that the rest of the line will first shrink
+                        before they are shrunk.
+  -d DIVISIONS, --divisions DIVISIONS
+                        How many areas to divide a single label into. If more labels
+                        that this are requested, multiple labels will be generated.
+                        Default: 1.
   --font FONT           The font to use for rendering. [Default: Futura]
-  --font-size SIZE_MM   The font size (in mm) to use for rendering. By default,
-                        this will be adjusted to fit the label horizontal area.
-  --margin MARGIN       Margin area (in mm) to leave around the label contents.
-  -o FILENAME           Output filename. [Default: label.step]
-  --style {embossed,debossed}
+  --font-size-maximum FONT_SIZE_MAXIMUM
+                        Specify a maximum font size (in mm) to use for rendering. The
+                        text may end up smaller than this if it needs to fit in the
+                        area.
+  --font-size FONT_SIZE
+                        The font size (in mm) to use for rendering. If unset, then the
+                        font will use as much vertical space as needed (that also fits
+                        within the horizontal area).
+  --font-style {regular,bold,italic}
+                        The font style use for rendering. [Default: regular]
+  --margin MARGIN       The margin area (in mm) to leave around the label contents.
+                        Default is per-base.
+  -o [OUTPUT ...], --output [OUTPUT ...]
+                        Output filename(s). [Default: ['label.step']]
+  --style {embossed,debossed,embedded}
                         How the label contents are formed.
   --list-fragments      List all available fragments.
+  --list-symbols        List all available electronic symbols
+  --label-gap LABEL_GAP
+                        Vertical gap (in mm) between physical labels. Default: 2 mm
+  --column-gap COLUMN_GAP
+                        Gap (in mm) between columns
+  -v, --verbose         Verbose output
 ```
 
 ## Defining Labels
@@ -196,6 +238,7 @@ A list of all the fragments currently recognised:
 | Names             | Description                                                       |
 |-------------------|-------------------------------------------------------------------|
 | ...               | Blank area that always expands to fill available space.<br><br>If specified multiple times, the areas will be balanced between<br>entries. This can be used to justify/align text. |
+| &lt;, &gt;        | Only used at the start of a single label or column. Specifies that all lines in the area should be left or right aligned. Invalid when specified elsewhere. |
 | &lt;number&gt;    | A gap of specific width, in mm.                                   |
 | bolt              | Variable length bolt, in the style of Printables pred-box labels.<br><br>If the requested bolt is longer than the available space, then the<br>bolt will be as large as possible with a broken thread. |
 | box               | Arbitrary width, height centered box. If height is not specified, will expand to row height. |
@@ -203,11 +246,13 @@ A list of all the fragments currently recognised:
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
 | lockwasher        | Circular washer with a locking cutout.                            |
+| measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging.|
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
 | washer            | Circular washer with a circular hole.                             |
 | webbolt           | Alternate bolt representation incorporating screw drive, with fixed length. |
+| `\|` (pipe)         | Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment. |
 
 A basic set of examples showing the usage of some of these:
 
@@ -246,6 +291,51 @@ both can be pointed backwards by adding the `flipped` feature.
 Examples showing some differences between the two bolts:
 
 ![](images/bolts.svg)
+
+### Multiple Columns
+
+Although the division system (`--divisions`) can be used to create a single
+label with multiple areas (e.g. the intended usage is for labels for a divided
+gridfinity bin that has e.g. more bins than gridfinity units), it isn't as
+flexible as the column separator fragment, `{|}` (using the pipe symbol).
+
+In the simple case, this just separates the areas mostly the same as if you had
+divided the bin, except that column mode has an explicit (and default) column
+gap (controled by `--column-gap`). Here's a label split into three with
+divisions (left), and columns(right):
+
+```
+$ gflabel "A\n{measure}" "B\n{measure}" "C\n{measure}"
+$ gflabel "A\n{measure}{|}B\n{measure}{|}C\n{measure}"
+```
+![](images/column_division.svg)
+![](images/column_basic.svg)
+
+> [!NOTE]
+> `{measure}` fragments have been added to make it easy to see how the layout
+> is being affected.
+
+However, with columns you can specify the proportions each column should be in
+relation to each other, by specifying the proportion each side of the pipe e.g.
+`{2|1}`. If unspecified, then the column is assumed to be proportion 1 compared
+to whatever the other side is.
+
+In this example, we've asked for 4:1:2 scaling:
+
+```
+$ gflabel "A\n{measure}{4|}B\n{measure}{1|2}C\n{measure}"
+```
+
+![](images/column_basic_proportion.svg)
+
+And here, we're combining the column fragments with the alignment fragment.
+Alignment markers can go at the start of any column:
+
+```
+gflabel "{<}A\n{measure}{4|}{>}B\n{measure}{1|2}{<}C\n{measure}"
+```
+
+![](images/column_basic_proportion_align.svg)
 
 
 ### Electronic Symbols
