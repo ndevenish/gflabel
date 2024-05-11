@@ -9,7 +9,9 @@ import re
 
 from build123d import (
     BuildSketch,
+    Location,
     Locations,
+    Mode,
     Sketch,
     Vector,
     add,
@@ -18,7 +20,7 @@ from rich import print
 
 from . import fragments
 from .options import RenderOptions
-from .util import IndentingRichHandler
+from .util import IndentingRichHandler, batched
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +69,101 @@ class LabelRenderer:
             A rendered Sketch object with the label contents, centered on
             the origin.
         """
-        return self._do_multiline_render(spec, area)
+        # Area splitting
+        SPLIT_RE = fragments.SplitterFragment.SPLIT_RE
+        columns = []
+        column_proportions: list[float] = []
+
+        def _handle_spec_alignment(scoped_spec) -> tuple[str, str | None]:
+            """Handle alignment fragment at start of a label."""
+            # Special handling: First column alignment is at start of string
+            if scoped_spec[:3] in {"{<}", "{>}"}:
+                return scoped_spec[3:], scoped_spec[1]
+            else:
+                return scoped_spec, None
+
+        spec, first_alignment = _handle_spec_alignment(spec)
+        column_alignments: list[str | None] = [first_alignment]
+
+        for label, *divider in batched(
+            fragments.SplitterFragment.SPLIT_RE.split(spec), SPLIT_RE.groups + 1
+        ):
+            alignment = column_alignments[-1]
+            label, inlabel_alignment = _handle_spec_alignment(label)
+            # Protect against both being specified e.g. no "{|>}{<}"
+            if inlabel_alignment and alignment:
+                raise fragments.InvalidFragmentSpecification(
+                    "Alignment has been specified on both column divider and at start of label."
+                )
+            # Either one of these, or neither of these, are set.
+            alignment = alignment or inlabel_alignment
+
+            # The last round of this loop will not have any divider
+            if divider:
+                split = fragments.SplitterFragment(*divider)
+                # This splitter definition gives us information about
+                # the next column
+                column_alignments.append(split.alignment)
+                if not column_proportions:
+                    # We're the first divider, define both
+                    column_proportions = [split.left, split.right]
+                else:
+                    # Proportions are relative to the previous column. Left is not
+                    # used except to define right in relation to the previous column
+                    column_proportions.append(
+                        split.right / split.left * column_proportions[-1]
+                    )
+            # If we've specified an alignment, pre-process to add alignment
+            # fragments to every line
+            if alignment:
+                parts = label.splitlines()
+                if label.endswith("\n"):
+                    parts.append("")
+                new_parts = []
+                for part in parts:
+                    if not part or "{...}" in part:
+                        new_parts.append(part)
+                    else:
+                        new_parts.append(
+                            f"{part}{{...}}" if alignment == "<" else f"{{...}}{part}"
+                        )
+                label = "\n".join(new_parts)
+
+            columns.append(label)
+
+        if not column_proportions:
+            column_proportions = [1]
+
+        # Calculate column widths
+        total_proportions = sum(column_proportions)
+        column_gaps_width = self.opts.column_gap * (len(columns) - 1)
+        column_widths = [
+            x * (area.X - column_gaps_width) / total_proportions
+            for x in column_proportions
+        ]
+        logger.debug(f"{column_widths=}")
+        logger.debug(f"{column_proportions=}")
+
+        with BuildSketch(mode=Mode.PRIVATE) as sketch:
+            x = -area.X / 2
+            for column_spec, width in zip(columns, column_widths):
+                add(
+                    self._do_multiline_render(
+                        column_spec, Vector(X=width, Y=area.Y)
+                    ).locate(Location((x + (width / 2), 0)))
+                )
+                x += width + self.opts.column_gap
+
+        return sketch.sketch
+        # return self._do_multiline_render(spec, area)
 
     def _do_multiline_render(
         self, spec: str, area: Vector, is_rescaling: bool = False
     ) -> Sketch:
         """Label render function, with ability to recurse."""
         lines = spec.splitlines()
+        if spec.endswith("\n"):
+            lines.append("")
 
         if not lines:
             raise ValueError("Asked to render empty label")
@@ -85,6 +175,9 @@ class LabelRenderer:
         with BuildSketch() as sketch:
             # Render each line onto the sketch separately
             for n, line in enumerate(lines):
+                # Handle blank lines
+                if not line:
+                    continue
                 # Calculate the y of the line center
                 render_y = (
                     area.Y / 2

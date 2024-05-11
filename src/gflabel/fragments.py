@@ -12,7 +12,7 @@ import zipfile
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from math import cos, radians, sin
-from typing import Any, Iterable, NamedTuple, Type, TypedDict
+from typing import Any, ClassVar, Iterable, NamedTuple, Type, TypedDict
 
 from build123d import (
     Align,
@@ -1089,6 +1089,45 @@ class _electrical_symbol_fragment(Fragment):
         bb = _sketch.sketch.bounding_box()
         # Resize this to match the requested height, and to be centered
         return _sketch.sketch.translate(-bb.center()).scale(height / bb.size.Y)
+
+
+@fragment("|")
+class SplitterFragment(Fragment):
+    """Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment."""
+
+    _SIIF = r"(\d*(?:\d[.]|[.]\d)?\d*)"  # Parses a simple int or float
+    SPLIT_RE: ClassVar[re.Pattern] = re.compile(f"\\{{{_SIIF}\\|{_SIIF}([<>]?)}}")
+
+    alignment: str | None
+
+    def __init__(
+        self,
+        left: str | None = None,
+        right: str | None = None,
+        alignment: str | None = None,
+        *args: list[Any],
+    ):
+        assert not args
+        self.left = float(left or 1)
+        self.right = float(right or 1)
+        self.alignment = alignment or None
+        if self.alignment not in {None, "<", ">"}:
+            raise ValueError(f"Unknown alignment specifier: {self.alignment!r}")
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        # This should never happen; for now. We might decide to add
+        # options for rendered dividers later.
+        raise NotImplementedError("Splitters should never be rendered")
+
+
+@fragment("<", ">")
+class AlignmentFragment(Fragment):
+    """Only used at the start of a single label or column. Specifies that all lines in the area should be left or right aligned. Invalid when specified elsewhere."""
+
+    def __init__(self, *args):
+        raise InvalidFragmentSpecification(
+            "Got Alignment fragment ({<} or {>}) not at the start of a label; for selective alignment please pad with {...}, or specify alignment in column division."
+        )
 
 
 if __name__ == "__main__":

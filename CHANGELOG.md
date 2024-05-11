@@ -8,6 +8,17 @@
 - Add new `predbox` base. These bases are labels for the [Parametric Gridfinity Storage Box by Pred][predbox]
   box labels. It is supported for width 4, 5, 6 and 7, which corresponds to the
   label size corresponding to a storage box of that many gridfinity units.
+- Added alignment specifiers `{<}` and `{>}`. These can only be used at the
+  start of a label column (or label division) and causes the contents of the
+  column to all be left-aligned or right-aligned. For aligning only specific
+  lines in a column, the padding fragment `{...}` can still be used.
+- Add fragment `{|}`. This allows you to designate columns between which
+  the text area will be split. You can specify the ratio of column widths
+  by specifying the proportions in the fragment e.g. `{2|1}`. You can also
+  specify the alignment of the column following the divider within the
+  fragment specification e.g. `{|>}`.
+- Added new option `--column-gap`, that specifies the gap between columns when
+  using the column specification fragment.
 
 [predbox]: https://www.printables.com/model/543553-gridfinity-storage-box-by-pred-now-parametric
 
