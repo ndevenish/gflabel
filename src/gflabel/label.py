@@ -73,11 +73,31 @@ class LabelRenderer:
         SPLIT_RE = fragments.SplitterFragment.SPLIT_RE
         columns = []
         column_proportions: list[float] = []
-        column_alignments: list[str | None] = [None]
+
+        def _handle_spec_alignment(scoped_spec) -> tuple[str, str | None]:
+            """Handle alignment fragment at start of a label."""
+            # Special handling: First column alignment is at start of string
+            if scoped_spec[:3] in {"{<}", "{>}"}:
+                return scoped_spec[3:], scoped_spec[1]
+            else:
+                return scoped_spec, None
+
+        spec, first_alignment = _handle_spec_alignment(spec)
+        column_alignments: list[str | None] = [first_alignment]
+
         for label, *divider in batched(
             fragments.SplitterFragment.SPLIT_RE.split(spec), SPLIT_RE.groups + 1
         ):
             alignment = column_alignments[-1]
+            label, inlabel_alignment = _handle_spec_alignment(label)
+            # Protect against both being specified e.g. no "{|>}{<}"
+            if inlabel_alignment and alignment:
+                raise fragments.InvalidFragmentSpecification(
+                    "Alignment has been specified on both column divider and at start of label."
+                )
+            # Either one of these, or neither of these, are set.
+            alignment = alignment or inlabel_alignment
+
             # The last round of this loop will not have any divider
             if divider:
                 split = fragments.SplitterFragment(*divider)
