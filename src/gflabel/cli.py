@@ -321,8 +321,9 @@ def run(argv: list[str] | None = None):
                 amount=args.depth if is_embossed else -args.depth,
                 mode=(Mode.ADD if is_embossed else Mode.SUBTRACT),
             )
-    # label_parts = [part.part]
-    part.part.label = "Base"
+
+    if not is_2d:
+        part.part.label = "Base"
 
     if args.style == LabelStyle.EMBEDDED:
         # We want to make new volumes for the label, making it flush
