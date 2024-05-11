@@ -121,7 +121,7 @@ class LabelRenderer:
                     parts.append("")
                 new_parts = []
                 for part in parts:
-                    if not part or "{...}" in part:
+                    if not part or "{...}" in part or "{measure}" in part:
                         new_parts.append(part)
                     else:
                         new_parts.append(

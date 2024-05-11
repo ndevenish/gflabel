@@ -19,6 +19,8 @@
   fragment specification e.g. `{|>}`.
 - Added new option `--column-gap`, that specifies the gap between columns when
   using the column specification fragment.
+- Added a `{measure}` fragment, that shows column widths. This can be useful
+  for demonstration or debugging purposes.
 
 [predbox]: https://www.printables.com/model/543553-gridfinity-storage-box-by-pred-now-parametric
 

@@ -1121,6 +1121,35 @@ class SplitterFragment(Fragment):
         raise NotImplementedError("Splitters should never be rendered")
 
 
+@fragment("measure")
+class DimensionFragment(Fragment):
+    """
+    Fills as much area as possible with a dimension line, and shows the length. Useful for debugging.
+    """
+
+    variable_width = True
+
+    examples = ["{measure}A{measure}", "{bolt(10)}{measure}"]
+
+    def min_width(self, height: float) -> float:
+        return 1
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        lw = 0.4
+        with BuildSketch() as sketch:
+            with Locations([(-maxsize / 2, 0)]):
+                Rectangle(lw, height / 4, align=(Align.MIN, Align.CENTER))
+            with Locations([(maxsize / 2, 0)]):
+                Rectangle(lw, height / 4, align=(Align.MAX, Align.CENTER))
+            with Locations([(0, 0)]):
+                Rectangle(maxsize - lw * 2, lw)
+
+            avail = height / 2 - lw / 2
+            with Locations([(0, -avail / 2)]):
+                Text(f"{maxsize:.1f}", font_size=height / 2)
+        return sketch.sketch
+
+
 @fragment("<", ">")
 class AlignmentFragment(Fragment):
     """Only used at the start of a single label or column. Specifies that all lines in the area should be left or right aligned. Invalid when specified elsewhere."""
