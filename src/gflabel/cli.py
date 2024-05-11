@@ -202,6 +202,10 @@ def run(argv: list[str] | None = None):
         default=2,
         type=float,
     )
+    parser.add_argument(
+        "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
+    )
+
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     args = parser.parse_args(argv)
 

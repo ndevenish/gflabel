@@ -48,6 +48,7 @@ class RenderOptions(NamedTuple):
     # height so that they can fit. Is this allowed, or will they scale
     # like everything else?
     allow_overheight: bool = True
+    column_gap: float = 0.4
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> RenderOptions:
@@ -63,4 +64,5 @@ class RenderOptions(NamedTuple):
                 font_height_exact=not args.font_size_maximum,
             ),
             allow_overheight=not args.no_overheight,
+            column_gap=args.column_gap,
         )

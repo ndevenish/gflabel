@@ -133,7 +133,11 @@ class LabelRenderer:
 
         # Calculate column widths
         total_proportions = sum(column_proportions)
-        column_widths = [x * area.X / total_proportions for x in column_proportions]
+        column_gaps_width = self.opts.column_gap * (len(columns) - 1)
+        column_widths = [
+            x * (area.X - column_gaps_width) / total_proportions
+            for x in column_proportions
+        ]
         logger.debug(f"{column_widths=}")
         logger.debug(f"{column_proportions=}")
 
@@ -145,7 +149,7 @@ class LabelRenderer:
                         column_spec, Vector(X=width, Y=area.Y)
                     ).locate(Location((x + (width / 2), 0)))
                 )
-                x += width
+                x += width + self.opts.column_gap
 
         return sketch.sketch
         # return self._do_multiline_render(spec, area)
