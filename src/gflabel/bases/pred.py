@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 
 from build123d import (
     Axis,
@@ -14,9 +15,11 @@ from build123d import (
     Mode,
     Plane,
     Polyline,
+    RectangleRounded,
     Sketch,
     Vector,
     add,
+    chamfer,
     extrude,
     fillet,
     make_face,
@@ -114,3 +117,27 @@ def body(width_u: int, recessed: bool = True) -> LabelBase:
         fillet(fillet_edges, radius=0.2)
 
     return LabelBase(part.part, Vector(width_u * 42 - 4.2 - 5.5, 10.5))
+
+
+def boxlabelbody(width_u: int) -> LabelBase:
+    if width_u not in {4, 5, 6, 7}:
+        logger.error("Pred box label dimensions only known for 4u, 5u, 6u and 7u boxes")
+        sys.exit(1)
+    r_edge = 3.5
+    depth = 0.85
+    chamfer_d = 0.2
+    height = 24.5
+    width = {
+        4: 25.5,
+        5: 67.5,
+        6: 82,
+        7: 82,
+    }[width_u]
+    with BuildPart() as part:
+        with BuildSketch() as sketch:
+            RectangleRounded(width, height, r_edge)
+        extrude(sketch.sketch, -depth)
+
+        chamfer(part.faces().filter_by(Plane.XY).edges(), chamfer_d)
+
+    return LabelBase(part.part, Vector(width - chamfer_d * 2, height - chamfer_d * 2))

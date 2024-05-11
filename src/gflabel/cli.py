@@ -95,7 +95,7 @@ def run(argv: list[str] | None = None):
     parser = ArgumentParser(description="Generate gridfinity bin labels")
     parser.add_argument(
         "--base",
-        choices=["pred", "plain", "none", "webb"],
+        choices=["pred", "plain", "none", "webb", "predbox"],
         default="pred",
         help="Label base to generate onto. [Default: %(default)s]",
     )
@@ -241,6 +241,9 @@ def run(argv: list[str] | None = None):
     if not args.margin:
         if args.base == "webb":
             args.margin = 0
+        if args.base == "predbox":
+            # This recommends a 2-3mm border
+            args.margin = 3
         else:
             args.margin = 0.2
     args.width = int(args.width.rstrip("u"))
@@ -253,6 +256,8 @@ def run(argv: list[str] | None = None):
         y = 0
         if args.base == "pred":
             body = pred.body(args.width, recessed=args.style == LabelStyle.EMBOSSED)
+        elif args.base == "predbox":
+            body = pred.boxlabelbody(args.width)
         elif args.base == "plain":
             if args.width < 10:
                 logger.warning(
@@ -336,7 +341,7 @@ def run(argv: list[str] | None = None):
                 show_cols.append((0.2, 0.2, 0.2))
             if args.base != "none":
                 bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
-                if bottom:
+                if bottom.wrapped:
                     show_parts.append(bottom)
                     show_cols.append(None)
 

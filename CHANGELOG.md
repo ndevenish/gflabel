@@ -5,6 +5,11 @@
   it was always in 3D)
 - Breaking: Renamed `--gap` option to `--label-gap`. The name "gap" was too
   generic when we wanted to allow specifying different "gaps".
+- Add new `predbox` base. These bases are labels for the [Parametric Gridfinity Storage Box by Pred][predbox]
+  box labels. It is supported for width 4, 5, 6 and 7, which corresponds to the
+  label size corresponding to a storage box of that many gridfinity units.
+
+[predbox]: https://www.printables.com/model/543553-gridfinity-storage-box-by-pred-now-parametric
 
 # GFLabel 0.1.4 (2024-05-11)
 
