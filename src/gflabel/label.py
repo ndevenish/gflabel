@@ -72,13 +72,31 @@ class LabelRenderer:
         # Area splitting
         SPLIT_RE = fragments.SplitterFragment.SPLIT_RE
         columns = []
+        column_proportions: list[float] = []
         for label, *divider in batched(
             fragments.SplitterFragment.SPLIT_RE.split(spec), SPLIT_RE.groups + 1
         ):
+            # The last round of this loop will not have any divider
+            if divider:
+                assert SPLIT_RE.groups == 2
+                # left, right = divider
+                left = float(divider[0] or 1)
+                right = float(divider[1] or 1)
+                if not column_proportions:
+                    # We're the first divider, define both
+                    column_proportions = [left, right]
+                else:
+                    # Proportions are relative to the previous column. Left is not
+                    # used except to define right in relation to the previous column
+                    column_proportions.append(right / left * column_proportions[-1])
+
             columns.append(label)
 
         # Calculate column widths
-        column_widths = [area.X / len(columns) for x in columns]
+        total_proportions = sum(column_proportions)
+        column_widths = [x * area.X / total_proportions for x in column_proportions]
+        logger.debug(f"{column_widths=}")
+        logger.debug(f"{column_proportions=}")
 
         with BuildSketch(mode=Mode.PRIVATE) as sketch:
             x = -area.X / 2
@@ -98,6 +116,8 @@ class LabelRenderer:
     ) -> Sketch:
         """Label render function, with ability to recurse."""
         lines = spec.splitlines()
+        if spec.endswith("\n"):
+            lines.append("")
 
         if not lines:
             raise ValueError("Asked to render empty label")
@@ -109,6 +129,9 @@ class LabelRenderer:
         with BuildSketch() as sketch:
             # Render each line onto the sketch separately
             for n, line in enumerate(lines):
+                # Handle blank lines
+                if not line:
+                    continue
                 # Calculate the y of the line center
                 render_y = (
                     area.Y / 2

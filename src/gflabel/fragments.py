@@ -1095,7 +1095,8 @@ class _electrical_symbol_fragment(Fragment):
 class SplitterFragment(Fragment):
     """Denotes a column edge, where the label should be split."""
 
-    SPLIT_RE: ClassVar[re.Pattern] = re.compile(r"\{(\d*)\|(\d*)}")
+    _SIIF = r"(\d*(?:\d[.]|[.]\d)?\d*)"  # Parses a simple int or float
+    SPLIT_RE: ClassVar[re.Pattern] = re.compile(f"\{{{_SIIF}\|{_SIIF}}}")
 
     def __init__(
         self, left: str | None = None, right: str | None = None, *args: list[Any]

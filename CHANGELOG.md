@@ -9,7 +9,8 @@
   box labels. It is supported for width 4, 5, 6 and 7, which corresponds to the
   label size corresponding to a storage box of that many gridfinity units.
 - Add fragment `{|}`. This allows you to designate columns between which
-  the text area will be split.
+  the text area will be split. You can specify the ratio of column widths
+  by specifying the proportions in the fragment e.g. `{2|1}`.
 
 [predbox]: https://www.printables.com/model/543553-gridfinity-storage-box-by-pred-now-parametric
 
