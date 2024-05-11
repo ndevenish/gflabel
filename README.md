@@ -145,6 +145,8 @@ Labels can consist of:
 
 - A physical base, which is the object that the labels are extruded out of
   (or cut into).
+- A label style, which specifies whether the label is raised out of, cut into,
+  or flush with the surface of the base.
 - Regular text, including unicode symbols (although complex symbols like emoji
   are unlikely to render properly, or at all - this is down to the underlying
   library).
@@ -162,10 +164,26 @@ The base (specified by `--base=TYPE`) defines the shape of what the label is gen
 
 | Base | Description | Image |
 | ---- | ----------- | ----- |
-| `pred` | For [Pred's parametric labelled bins](https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame) labels. If specifying this style, then height is ignored and width is in gridfinity units (e.g. `--width=1` for a label for a single 42mm bin). | ![](images/base_pred.png) |
+| `pred` | For [Pred's parametric labelled bins][predlabel] labels. If specifying this style, then height is ignored and width is in gridfinity units (e.g. `--width=1` for a label for a single 42mm bin). | ![](images/base_pred.png) |
+| `predbox` | For labels matching the style of [Pred's Parametric Storage Box][predbox]. These are larger (~25 mm) labels for slotting in the front of the parametric storage boxes. `--width` is for the storage bin width, and is 4, 5, 6, or 7 u. | ![](images/base_predbox.png)
 | `plain` | For a blank, square label with a chamfered top edge. The specified width and height will be the whole area of the label base. You must specify at least a width. | ![](images/base_plain.png)
 | `webb` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](images/base_webb.png)
 | `none` | For no base at all - the label will still be extruded. This is useful if you want to generate a label model to place onto another volume in the slicer. | ![](images/base_none.png) |
+
+[predlabel]: https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame
+[predbox]: https://www.printables.com/model/543553-gridfinity-storage-box-by-pred-now-parametric
+
+### Label Styles
+
+Label style controls whether the generated label is raised out of, cut into, or
+flush with the base surface. This is controlled with the `--style=` parameter,
+which can be set to `embossed`, `debossed`, or `embedded`:
+
+| Style    | Description | Image      |
+| -------- | ----------- | --------- |
+| Embossed | This is the default. The labels contents are extruded upwards out of the base, as raised features. You can print this multicoloured by changing material at a specific layer height. | ![](images/style_embossed.png)
+| Debossed | Instead of being raised, the label contents are cut into the base. You can also print this multicoloured by changing material at specific layer height.  | ![](images/style_debossed.png)
+| Embedded | The label contents are flush with the surface of the label. This can be printed with a multimaterial system, as it will require material changes within a single layer. You can print this label face-down. To print this, you will need to "Split to Parts" (Bambu/OrcaSlicer) in your slicer and manually change the selected material for the bases.  | ![](images/style_embedded.png)
 
 
 ### Symbols/Fragments
