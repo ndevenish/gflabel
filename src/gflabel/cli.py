@@ -197,7 +197,7 @@ def run(argv: list[str] | None = None):
         action=ListSymbolsAction,
     )
     parser.add_argument(
-        "--gap",
+        "--label-gap",
         help="Vertical gap (in mm) between physical labels. Default: %(default)s mm",
         default=2,
         type=float,
@@ -265,10 +265,10 @@ def run(argv: list[str] | None = None):
             body = None
 
         if body:
-            y_offset_each_label = body.part.bounding_box().size.Y + args.gap
+            y_offset_each_label = body.part.bounding_box().size.Y + args.label_gap
             label_area = body.area
         else:
-            y_offset_each_label = args.height + args.gap
+            y_offset_each_label = args.height + args.label_gap
             label_area = Vector(X=args.width, Y=args.height)
 
         body_locations = []

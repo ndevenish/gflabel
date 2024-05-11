@@ -3,6 +3,8 @@
 - Fix error when using `ocp_vscode` to preview labels and exporting SVG (the
   label was only rendered in 2D, but the code to push the preview assumed that
   it was always in 3D)
+- Breaking: Renamed `--gap` option to `--label-gap`. The name "gap" was too
+  generic when we wanted to allow specifying different "gaps".
 
 # GFLabel 0.1.4 (2024-05-11)
 
@@ -22,8 +24,8 @@
   ensures cleaner SVG output and avoids topology issues when trying to add more
   and more data into the SVG projection (this is used to generate the example
   tables).
-- Added `--gap` option, which when multiple labels are being generated, allows
-  you to customise the gap between labels.
+- ~~Added `--gap` option, which when multiple labels are being generated, allows
+  you to customise the gap between labels.~~
 - Made progress towards a more user-friendly console output.
 - Add fragment `symbol(...)`. This rendered electronic symbols, taken from
   Chris Pikul' [electronic-symbols][christ-pikul] diagrams. Not all of the
