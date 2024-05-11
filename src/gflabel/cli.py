@@ -7,7 +7,6 @@ import argparse
 import logging
 import sys
 from argparse import ArgumentParser
-from itertools import islice
 from typing import Any, Sequence
 
 import build123d as bd
@@ -36,7 +35,7 @@ from . import fragments
 from .bases import plain, pred, webb
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
-from .util import IndentingRichHandler
+from .util import IndentingRichHandler, batched
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +43,6 @@ if "--vscode" in sys.argv:
     from ocp_vscode import Camera, set_defaults, show
 
     set_defaults(reset_camera=Camera.CENTER)
-
-# common_args = ArgumentParser(add_help=False)
-
-
-# Taken from Python 3.12 documentation.
-def batched(iterable, n):
-    # batched('ABCDEFG', 3) → ABC DEF G
-    if n < 1:
-        raise ValueError("n must be at least one")
-    it = iter(iterable)
-    while batch := tuple(islice(it, n)):
-        yield batch
 
 
 class ListFragmentsAction(argparse.Action):

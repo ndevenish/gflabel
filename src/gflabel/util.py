@@ -3,9 +3,20 @@ from __future__ import annotations
 import logging
 import textwrap
 from collections.abc import Mapping
+from itertools import islice
 from typing import Any, Callable, Sequence
 
 from rich.logging import RichHandler
+
+
+# Taken from Python 3.12 documentation.
+def batched(iterable, n):
+    # batched('ABCDEFG', 3) → ABC DEF G
+    if n < 1:
+        raise ValueError("n must be at least one")
+    it = iter(iterable)
+    while batch := tuple(islice(it, n)):
+        yield batch
 
 
 class IndentingRichHandler(RichHandler):
