@@ -12,7 +12,7 @@ import zipfile
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from math import cos, radians, sin
-from typing import Any, Iterable, NamedTuple, Type, TypedDict
+from typing import Any, ClassVar, Iterable, NamedTuple, Type, TypedDict
 
 from build123d import (
     Align,
@@ -1089,6 +1089,25 @@ class _electrical_symbol_fragment(Fragment):
         bb = _sketch.sketch.bounding_box()
         # Resize this to match the requested height, and to be centered
         return _sketch.sketch.translate(-bb.center()).scale(height / bb.size.Y)
+
+
+@fragment("|")
+class SplitterFragment(Fragment):
+    """Denotes a column edge, where the label should be split."""
+
+    SPLIT_RE: ClassVar[re.Pattern] = re.compile(r"\{(\d*)\|(\d*)}")
+
+    def __init__(
+        self, left: str | None = None, right: str | None = None, *args: list[Any]
+    ):
+        self.left = left
+        self.right = right
+        raise NotImplementedError("Splitters currently never be instantiated")
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        # This should never happen; for now. We might decide to add
+        # options for rendered dividers later.
+        raise NotImplementedError("Splitters should never be rendered")
 
 
 if __name__ == "__main__":

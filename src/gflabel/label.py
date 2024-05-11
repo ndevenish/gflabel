@@ -9,7 +9,9 @@ import re
 
 from build123d import (
     BuildSketch,
+    Location,
     Locations,
+    Mode,
     Sketch,
     Vector,
     add,
@@ -18,7 +20,7 @@ from rich import print
 
 from . import fragments
 from .options import RenderOptions
-from .util import IndentingRichHandler
+from .util import IndentingRichHandler, batched
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +69,29 @@ class LabelRenderer:
             A rendered Sketch object with the label contents, centered on
             the origin.
         """
-        return self._do_multiline_render(spec, area)
+        # Area splitting
+        SPLIT_RE = fragments.SplitterFragment.SPLIT_RE
+        columns = []
+        for label, *divider in batched(
+            fragments.SplitterFragment.SPLIT_RE.split(spec), SPLIT_RE.groups + 1
+        ):
+            columns.append(label)
+
+        # Calculate column widths
+        column_widths = [area.X / len(columns) for x in columns]
+
+        with BuildSketch(mode=Mode.PRIVATE) as sketch:
+            x = -area.X / 2
+            for column_spec, width in zip(columns, column_widths):
+                add(
+                    self._do_multiline_render(
+                        column_spec, Vector(X=width, Y=area.Y)
+                    ).locate(Location((x + (width / 2), 0)))
+                )
+                x += width
+
+        return sketch.sketch
+        # return self._do_multiline_render(spec, area)
 
     def _do_multiline_render(
         self, spec: str, area: Vector, is_rescaling: bool = False
