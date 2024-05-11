@@ -321,21 +321,24 @@ def run(argv: list[str] | None = None):
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
     if args.vscode:
-        # Export both step and stl in vscode_ocp mode
-        bd.export_stl(part.part, "label.stl")
-        export_step(part.part, "label.step")
-        # Split the base for display as two colours
         show_parts = []
         show_cols: list[str | tuple[float, float, float] | None] = []
-        top = part.part.split(Plane.XY, keep=Keep.TOP)
-        if top:
-            show_parts.append(top)
-            show_cols.append((0.2, 0.2, 0.2))
-        if args.base != "none":
-            bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
-            if bottom:
-                show_parts.append(bottom)
-                show_cols.append(None)
+        # Export both step and stl in vscode_ocp mode
+        if is_2d:
+            show_parts.append(label_sketch.sketch)
+        else:
+            bd.export_stl(part.part, "label.stl")
+            export_step(part.part, "label.step")
+            # Split the base for display as two colours
+            top = part.part.split(Plane.XY, keep=Keep.TOP)
+            if top:
+                show_parts.append(top)
+                show_cols.append((0.2, 0.2, 0.2))
+            if args.base != "none":
+                bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
+                if bottom:
+                    show_parts.append(bottom)
+                    show_cols.append(None)
 
         show(
             *show_parts,
