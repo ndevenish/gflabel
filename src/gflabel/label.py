@@ -73,22 +73,41 @@ class LabelRenderer:
         SPLIT_RE = fragments.SplitterFragment.SPLIT_RE
         columns = []
         column_proportions: list[float] = []
+        column_alignments: list[str | None] = [None]
         for label, *divider in batched(
             fragments.SplitterFragment.SPLIT_RE.split(spec), SPLIT_RE.groups + 1
         ):
+            alignment = column_alignments[-1]
             # The last round of this loop will not have any divider
             if divider:
-                assert SPLIT_RE.groups == 2
-                # left, right = divider
-                left = float(divider[0] or 1)
-                right = float(divider[1] or 1)
+                split = fragments.SplitterFragment(*divider)
+                # This splitter definition gives us information about
+                # the next column
+                column_alignments.append(split.alignment)
                 if not column_proportions:
                     # We're the first divider, define both
-                    column_proportions = [left, right]
+                    column_proportions = [split.left, split.right]
                 else:
                     # Proportions are relative to the previous column. Left is not
                     # used except to define right in relation to the previous column
-                    column_proportions.append(right / left * column_proportions[-1])
+                    column_proportions.append(
+                        split.right / split.left * column_proportions[-1]
+                    )
+            # If we've specified an alignment, pre-process to add alignment
+            # fragments to every line
+            if alignment:
+                parts = label.splitlines()
+                if label.endswith("\n"):
+                    parts.append("")
+                new_parts = []
+                for part in parts:
+                    if not part or "{...}" in part:
+                        new_parts.append(part)
+                    else:
+                        new_parts.append(
+                            f"{part}{{...}}" if alignment == "<" else f"{{...}}{part}"
+                        )
+                label = "\n".join(new_parts)
 
             columns.append(label)
 
