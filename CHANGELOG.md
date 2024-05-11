@@ -1,4 +1,4 @@
-# GFLabel 0.1.5 (Unreleased)
+# GFLabel 0.1.5 (2024-05-12)
 
 - Fix error when using `ocp_vscode` to preview labels and exporting SVG (the
   label was only rendered in 2D, but the code to push the preview assumed that
