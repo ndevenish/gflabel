@@ -26,6 +26,7 @@ from build123d import (
     Locations,
     Mode,
     Plane,
+    RectangleRounded,
     Vector,
     add,
     export_step,
@@ -206,6 +207,7 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
     )
+    parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
 
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     args = parser.parse_args(argv)
@@ -308,6 +310,12 @@ def run(argv: list[str] | None = None):
             logger.debug("Combining all labels")
             add(all_labels)
 
+        if args.box and is_2d:
+            logger.debug("Generating label outline for --box")
+            with BuildSketch(mode=Mode.PRIVATE) as body_box:
+                with Locations(body_locations):
+                    add(RectangleRounded(label_area.X, label_area.Y, label_area.Y / 10))
+
         if not is_2d:
             # Create all of the bases
             if body:
@@ -339,9 +347,15 @@ def run(argv: list[str] | None = None):
         elif output.endswith(".step"):
             export_step(assembly, output)
         elif output.endswith(".svg"):
-            max_dimension = max(label_sketch.sketch.bounding_box().size)
+            max_dimension = max(
+                *label_sketch.sketch.bounding_box().size, label_area.X, label_area.Y
+            )
             exporter = ExportSVG(scale=100 / max_dimension)
             exporter.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
+
+            if args.box and is_2d:
+                exporter.add_layer("Box", line_weight=1)
+                exporter.add_shape(body_box.sketch, layer="Box")
             logger.info(f"Writing SVG {output}")
             exporter.add_shape(label_sketch.sketch, layer="Shapes")
             exporter.write(output)
