@@ -1,3 +1,8 @@
+# GFLabel 0.1.6 (Unreleased)
+
+- Added `{magnet}` fragment. Thanks to [@PaulBone](https://github.com/PaulBone)
+  for the contribution.
+
 # GFLabel 0.1.5 (2024-05-12)
 
 - Fix error when using `ocp_vscode` to preview labels and exporting SVG (the

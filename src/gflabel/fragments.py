@@ -32,6 +32,7 @@ from build123d import (
     Polyline,
     Rectangle,
     RegularPolygon,
+    Rot,
     Sketch,
     SlotCenterToCenter,
     Text,
@@ -1156,6 +1157,27 @@ class AlignmentFragment(Fragment):
         raise InvalidFragmentSpecification(
             "Got Alignment fragment ({<} or {>}) not at the start of a label; for selective alignment please pad with {...}, or specify alignment in column division."
         )
+
+
+@fragment("magnet", examples=["{magnet}"])
+def _fragment_magnet(height: float, _maxsize: float) -> Sketch:
+    """Horseshoe shaped magnet symbol."""
+    scale = height * 2 / 3
+    thickness = 0.2
+    arm_len = 1.8
+    with BuildSketch() as sketch:
+        Circle(scale / 2)
+        Circle(scale / 2 * (1 - thickness * 2), mode=Mode.SUBTRACT)
+        Rectangle(
+            scale * arm_len, scale, align=(Align.MIN, Align.CENTER), mode=Mode.SUBTRACT
+        )
+        with Locations(
+            (0, scale / 2 - scale * thickness / 2),
+            (0, -(scale / 2 - scale * thickness / 2)),
+        ):
+            Rectangle(scale / 2, scale * thickness, align=(Align.MIN, Align.CENTER))
+
+    return Rot(0, 0, 45) * sketch.sketch
 
 
 if __name__ == "__main__":
