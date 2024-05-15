@@ -1159,6 +1159,27 @@ class AlignmentFragment(Fragment):
         )
 
 
+@fragment("magnet", examples=["{magnet}"])
+def _fragment_magnet(height: float, _maxsize: float) -> Sketch:
+    """Horseshoe shaped magnet symbol."""
+    scale = height * 2 / 3
+    thickness = 0.2
+    arm_len = 1.8
+    with BuildSketch() as sketch:
+        Circle(scale / 2)
+        Circle(scale / 2 * (1 - thickness * 2), mode=Mode.SUBTRACT)
+        Rectangle(
+            scale * arm_len, scale, align=(Align.MIN, Align.CENTER), mode=Mode.SUBTRACT
+        )
+        with Locations(
+            (0, scale / 2 - scale * thickness / 2),
+            (0, -(scale / 2 - scale * thickness / 2)),
+        ):
+            Rectangle(scale / 2, scale * thickness, align=(Align.MIN, Align.CENTER))
+
+    return Rot(0, 0, 45) * sketch.sketch
+
+
 if __name__ == "__main__":
     # Generate a markdown table of fragment definitions
     frags = fragment_description_table()
@@ -1179,22 +1200,3 @@ if __name__ == "__main__":
         desc = _clean(frag.description)
         names = _clean(", ".join(frag.names))
         print(f"| {names:{maxname}} | {desc:{desc_len}} |")
-
-@fragment("magnet", examples=["{magnet}"])
-def _fragment_magnet(height: float, _maxsize: float) -> Sketch:
-    """Horseshoe shaped magnet symbol."""
-    scale = height * 2/3
-    thickness = 0.2
-    arm_len = 1.8
-    with BuildSketch() as sketch:
-        Circle(scale/2)
-        Circle(scale/2*(1 - thickness*2), mode=Mode.SUBTRACT)
-        Rectangle(scale*arm_len, scale,
-                  align=(Align.MIN, Align.CENTER),
-                  mode=Mode.SUBTRACT)
-        with Locations((0, scale/2 - scale*thickness/2),
-                    (0, -(scale/2 - scale*thickness/2))):
-            Rectangle(scale/2, scale*thickness,
-                      align=(Align.MIN, Align.CENTER))
-
-    return Rot(0, 0, 45) * sketch.sketch

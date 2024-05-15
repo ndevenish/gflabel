@@ -246,7 +246,8 @@ A list of all the fragments currently recognised:
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
 | lockwasher        | Circular washer with a locking cutout.                            |
-| measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging.|
+| magnet            | Horseshoe shaped magnet symbol.                                   |
+| measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
