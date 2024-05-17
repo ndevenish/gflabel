@@ -391,3 +391,10 @@ source symbol library. Note that for some of the symbols, they are rendered
 incorrectly. This is an unresolved bug in GFLabel.
 
 ![](images/symbols.svg)
+
+# Bundled Dependencies
+
+GFLabel uses (and bundles) a couple of dependencies in subdirectories:
+- The [Chris Pikul Electronic Symbols ][pikul] library, MIT Licence Copyright (c) 2022 Chris Pikul.
+
+[pikul]: https://github.com/chris-pikul/electronic-symbols

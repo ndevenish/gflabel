@@ -1077,7 +1077,7 @@ class _electrical_symbol_fragment(Fragment):
         self.symbol = _match_electronic_symbol_with_selectors(selectors)
 
         with importlib.resources.files("gflabel").joinpath(
-            "chris-pikul-symbols.zip"
+            "resources/chris-pikul-symbols.zip"
         ).open("rb") as f:
             zip = zipfile.ZipFile(f)
             svg_data = io.StringIO(
