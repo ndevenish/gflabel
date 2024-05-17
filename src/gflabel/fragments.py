@@ -231,12 +231,9 @@ class TextFragment(Fragment):
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
         with BuildSketch() as sketch:
-            Text(
-                self.text,
-                font_size=options.font.get_allowed_height(height),
-                font=options.font.font,
-                font_style=options.font.font_style,
-            )
+            with options.font.font_options() as f:
+                print(f"Using {f}")
+                Text(self.text, font_size=options.font.get_allowed_height(height), **f)
         return sketch.sketch
 
 

@@ -2,6 +2,14 @@
 
 - Added `{magnet}` fragment. Thanks to [@PaulBone](https://github.com/PaulBone)
   for the contribution.
+- Changed text/font handling. Instead of Futura, GFLabel now defaults to a
+  bundled version of [Open Sans][opensans]. You can still specify your
+  font of choice with `--font` (if it is a system font), or if you want to
+  specify a specific font file you can set `--font-path`.
+- You can set the default font at an environment level by setting `GFLABEL_FONT`
+  to the name of the system font that you want to use.
+
+[opensans]: https://github.com/googlefonts/opensans
 
 # GFLabel 0.1.5 (2024-05-12)
 

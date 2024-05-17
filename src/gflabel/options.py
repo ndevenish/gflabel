@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import importlib
+import importlib.resources
+import logging
 from enum import Enum, auto
-from typing import NamedTuple
+from typing import Iterator, NamedTuple
 
-from build123d import FontStyle
+from build123d import FontStyle, Path
+
+logger = logging.getLogger(__name__)
 
 
 class LabelStyle(Enum):
@@ -23,8 +29,10 @@ class LabelStyle(Enum):
 
 
 class FontOptions(NamedTuple):
-    font: str = "Futura"
-    font_style: FontStyle = FontStyle.BOLD
+    font: str | None = None
+    font_style: FontStyle = FontStyle.REGULAR
+    font_path: Path | None = None
+
     # The font height, in mm. If this is unspecified, then the font will
     # be scaled to maximum area height, and then scaled down accordingly.
     # Setting this can explicitly cause overflow, as the text will be
@@ -39,6 +47,36 @@ class FontOptions(NamedTuple):
             return self.font_height_mm or requested_height
         else:
             return min(self.font_height_mm or requested_height, requested_height)
+
+    @contextlib.contextmanager
+    def font_options(self) -> Iterator:
+        """
+        Handle loading of any font files, generating the kwargs to pass to build123d.Text
+        """
+
+        kwargs = {"font_style": self.font_style}
+        if self.font_path:
+            kwargs["font_path"] = str(self.font_path)
+        # Need to work out if path is enough or if we also need name
+        if self.font:
+            kwargs["font"] = self.font
+
+        with contextlib.ExitStack() as stack:
+            # If we have no font, and no font path, then use the built-in ones
+            if not self.font and not self.font_path:
+                logger.debug("Falling back to internal font OpenSans")
+                # This is a bit noisy but the way you are supposed to do it
+                fontfile = stack.enter_context(
+                    importlib.resources.as_file(
+                        importlib.resources.files("gflabel").joinpath(
+                            f"resources/OpenSans-{self.font_style.name.title()}"
+                        )
+                    )
+                )
+
+                kwargs["font_path"] = str(fontfile)
+
+            yield kwargs
 
 
 class RenderOptions(NamedTuple):
@@ -63,6 +101,7 @@ class RenderOptions(NamedTuple):
                 font_style=font_style,
                 font_height_mm=args.font_size or args.font_size_maximum,
                 font_height_exact=not args.font_size_maximum,
+                font_path=args.font_path,
             ),
             allow_overheight=not args.no_overheight,
             column_gap=args.column_gap,

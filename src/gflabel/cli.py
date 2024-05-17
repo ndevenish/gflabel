@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from argparse import ArgumentParser
+from pathlib import Path
 from typing import Any, Sequence
 
 import build123d as bd
@@ -145,9 +147,9 @@ def run(argv: list[str] | None = None):
 
     parser.add_argument(
         "--font",
-        help="The font to use for rendering. [Default: %(default)s]",
+        help="The name of the system font to use for rendering. If unspecified, a bundled version of Open Sans will be used. Set GFLABEL_FONT in your environment to change the default.",
         type=str,
-        default="Futura",
+        default=os.getenv("GFLABEL_FONT"),
     )
 
     font_size = parser.add_mutually_exclusive_group()
@@ -161,13 +163,18 @@ def run(argv: list[str] | None = None):
         help="The font size (in mm) to use for rendering. If unset, then the font will use as much vertical space as needed (that also fits within the horizontal area).",
         type=float,
     )
-
     parser.add_argument(
         "--font-style",
         help="The font style use for rendering. [Default: %(default)s]",
         choices=[x.name.lower() for x in FontStyle],
         default="regular",
         type=str,
+    )
+    parser.add_argument(
+        "--font-path",
+        help="Path to font file, if not using a system-level font.",
+        type=Path,
+        # default=None,
     )
     parser.add_argument(
         "--margin",

@@ -227,6 +227,24 @@ which can be set to `embossed`, `debossed`, or `embedded`:
 | Debossed | Instead of being raised, the label contents are cut into the base. You can also print this multicoloured by changing material at specific layer height.  | ![](images/style_debossed.png)
 | Embedded | The label contents are flush with the surface of the label. This can be printed with a multimaterial system, as it will require material changes within a single layer. You can print this label face-down. To print this, you will need to "Split to Parts" (Bambu/OrcaSlicer) in your slicer and manually change the selected material for the bases.  | ![](images/style_embedded.png)
 
+### Text Style, and Fonts
+
+Text is rendered as text on the label, including variable width whitespaces so e.g. a halfspace
+will render a halfspace width, which is good for minor separation if you don't want a gap of
+specific width.
+
+GFLabel comes with [Open Sans][opensans], and will use this (in regular, bold or italic) if you
+don't otherwise specify any font preference.
+
+Options for controlling font rendering are:
+
+| Setting       | Description |
+| ------------- | ------------|
+| `--font NAME` | Specified font directly, by name. This will have to be a font that is generally installed and available on your system. If you don't specify this (or -path), then a packaged version of Open Sans will be used. |
+| `--font-path /path/to/font` | Specify font by directly specifying the location of the font file on disk. Takes precedence over `--font`, so if you specify both, this will be used.
+| `--font-style STYLE` | Where `STYLE` can be `bolt`, `italic`, or `regular` (the default). If you haven't specified a font file then the underlying font system will make a best-effort attempt to find your selected font in one of these weights.
+| `--font-size NUMBER` | Specifies a fixed height (in mm) for the font on the label. Text will always be rendered at this size, even if it causes the text to not fit. Using this can help text-size consistency over many labels, as otherwise the shorter text labels may end up at a larger scale (because they can fill the vertical without over-running it's available space).
+| `--font-size-maximum NUMBER` | Specifies a _maximum_ font size. Text won't be allowed to go larger than this, but text can be shrunk to fit if it would otherwise overrun it's label area. This can help text-size disparity over many labels in cases where some of them are much longer, and you can tolerate them being shrunken. This is used to generate the electrical symbol examples.
 
 ### Symbols/Fragments
 
@@ -343,7 +361,7 @@ gflabel "{<}A\n{measure}{4|}{>}B\n{measure}{1|2}{<}C\n{measure}"
 
 Electronic symbols can be generated using the `{symbol(...)}` fragment.
 GFLabel is using the [Chris Pikul Electronic Symbols ][pikul] library kindly
-released under MIT Licence.
+released under MIT License.
 
 [pikul]: https://github.com/chris-pikul/electronic-symbols
 
@@ -395,6 +413,9 @@ incorrectly. This is an unresolved bug in GFLabel.
 # Bundled Dependencies
 
 GFLabel uses (and bundles) a couple of dependencies in subdirectories:
-- The [Chris Pikul Electronic Symbols ][pikul] library, MIT Licence Copyright (c) 2022 Chris Pikul.
+- The [Chris Pikul Electronic Symbols ][pikul] library, MIT License © 2022 Chris Pikul.
+- The [Open Sans][opensans] font family, OFL-1.1 License © 2020 The Open Sans Project Authors.
 
+
+[opensans]: https://github.com/googlefonts/opensans
 [pikul]: https://github.com/chris-pikul/electronic-symbols
