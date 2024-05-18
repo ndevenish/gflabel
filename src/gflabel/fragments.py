@@ -894,7 +894,7 @@ def fragment_description_table() -> list[FragmentDescriptionRow]:
         )
     descriptions.append(
         FragmentDescriptionRow(
-            names=["<number>"],
+            names=["1", "4.2", "..."],
             description="A gap of specific width, in mm.",
             examples=["]{12.5}["],
         )
@@ -1192,8 +1192,15 @@ if __name__ == "__main__":
         def _clean(s):
             if s is None:
                 return ""
-            return s.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+            return (
+                s.replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\n", "<br>")
+                .replace("|", "\\|")
+            )
 
+        if frag.names == ["|"]:
+            frag = frag._replace(names=["`|` (pipe)"])
         desc = _clean(frag.description)
         names = _clean(", ".join(frag.names))
         print(f"| {names:{maxname}} | {desc:{desc_len}} |")

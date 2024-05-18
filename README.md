@@ -256,8 +256,8 @@ A list of all the fragments currently recognised:
 | Names             | Description                                                       |
 |-------------------|-------------------------------------------------------------------|
 | ...               | Blank area that always expands to fill available space.<br><br>If specified multiple times, the areas will be balanced between<br>entries. This can be used to justify/align text. |
+| 1, 4.2, ...       | A gap of specific width, in mm.                                   |
 | &lt;, &gt;        | Only used at the start of a single label or column. Specifies that all lines in the area should be left or right aligned. Invalid when specified elsewhere. |
-| &lt;number&gt;    | A gap of specific width, in mm.                                   |
 | bolt              | Variable length bolt, in the style of Printables pred-box labels.<br><br>If the requested bolt is longer than the available space, then the<br>bolt will be as large as possible with a broken thread. |
 | box               | Arbitrary width, height centered box. If height is not specified, will expand to row height. |
 | head              | Screw head with specifiable head-shape.                           |
@@ -271,7 +271,7 @@ A list of all the fragments currently recognised:
 | variable_resistor | Electrical symbol of a variable resistor.                         |
 | washer            | Circular washer with a circular hole.                             |
 | webbolt           | Alternate bolt representation incorporating screw drive, with fixed length. |
-| `\|` (pipe)         | Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment. |
+| `\|` (pipe)       | Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment. |
 
 A basic set of examples showing the usage of some of these:
 
