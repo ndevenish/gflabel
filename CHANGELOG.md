@@ -1,4 +1,4 @@
-# GFLabel 0.1.6 (Unreleased)
+# GFLabel 0.1.6 (2024-05-20)
 
 - Added `{magnet}` fragment. Thanks to [@PaulBone](https://github.com/PaulBone)
   for the contribution.
