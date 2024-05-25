@@ -912,7 +912,7 @@ class ManifestItem(TypedDict):
 
 @functools.cache
 def electronic_symbols_manifest() -> list[ManifestItem]:
-    with importlib.resources.files("gflabel").joinpath("chris-pikul-symbols.zip").open(
+    with importlib.resources.files("gflabel").joinpath("resources").joinpath("chris-pikul-symbols.zip").open(
         "rb"
     ) as f:
         zip = zipfile.ZipFile(f)
