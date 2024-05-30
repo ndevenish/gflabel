@@ -1,4 +1,4 @@
-# GFLabel 0.1.7 (Unreleased)
+# GFLabel 0.1.7 (2024-05-30)
 
 - Bugfix: Symbol generation was broken by a reorganisation. Thanks to [@PaulBone](https://github.com/PaulBone).
 - Bugfix: Standalone whitespace was not using fonts correctly. ([#6](https://github.com/ndevenish/gflabel/issues/6))
