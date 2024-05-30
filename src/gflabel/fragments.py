@@ -240,28 +240,27 @@ class TextFragment(Fragment):
 @functools.lru_cache
 def _whitespace_width(spacechar: str, height: float, options: RenderOptions) -> float:
     """Calculate the width of a space at a specific text height"""
-    w2 = (
-        Text(
-            f"a{spacechar}a",
-            font_size=options.font.get_allowed_height(height),
-            font=options.font.font,
-            font_style=options.font.font_style,
-            mode=Mode.PRIVATE,
+    with options.font.font_options() as f:
+        w2 = (
+            Text(
+                f"a{spacechar}a",
+                font_size=options.font.get_allowed_height(height),
+                mode=Mode.PRIVATE,
+                **f,
+            )
+            .bounding_box()
+            .size.X
         )
-        .bounding_box()
-        .size.X
-    )
-    wn = (
-        Text(
-            "aa",
-            font_size=options.font.get_allowed_height(height),
-            font=options.font.font,
-            font_style=options.font.font_style,
-            mode=Mode.PRIVATE,
+        wn = (
+            Text(
+                "aa",
+                font_size=options.font.get_allowed_height(height),
+                mode=Mode.PRIVATE,
+                **f,
+            )
+            .bounding_box()
+            .size.X
         )
-        .bounding_box()
-        .size.X
-    )
     return w2 - wn
 
 
