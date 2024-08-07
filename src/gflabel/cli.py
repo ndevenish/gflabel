@@ -260,6 +260,11 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
+    parser.add_argument(
+        "--version",
+        help="The version of geometry to use for a given label system (if a system has versions). [Default: latest]",
+        default="latest",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
