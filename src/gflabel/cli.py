@@ -297,13 +297,13 @@ def run(argv: list[str] | None = None):
         args.labels = ["{webbolt(pozi)}{...}M3×20"]
 
     if not args.width:
-        if args.base in {"pred", "webb"}:
+        if args.base in {"pred", "cullenect"}:
             args.width = "1"
         else:
             sys.exit(f"Error: Must specify width for label base '{args.base}'.")
 
     if not args.margin:
-        if args.base == "webb":
+        if args.base == "cullenect":
             args.margin = 0
         if args.base == "predbox":
             # This recommends a 2-3mm border
@@ -332,8 +332,8 @@ def run(argv: list[str] | None = None):
                     f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
                 )
             body = plain.body(args.width, args.height)
-        elif args.base == "webb":
-            body = webb.body()
+        elif args.base == "cullenect":
+            body = webb.body(args.version)
         else:
             body = None
 
