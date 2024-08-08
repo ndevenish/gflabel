@@ -103,10 +103,6 @@ class BaseChoiceAction(argparse.Action):
         # Allow using these still
         deprecated_choices = {"webb": "cullenect"}
         if values in deprecated_choices:
-            print(
-                f"Deprecated: {values} is renamed to {deprecated_choices[values]}. This may stop working in the future.",
-                file=sys.stderr,
-            )
             values = deprecated_choices[values]
 
         choices = ["pred", "plain", "none", "cullenect", "predbox"]
