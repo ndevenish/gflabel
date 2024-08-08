@@ -167,13 +167,15 @@ def body_v203() -> LabelBase:
             """Extracts the two Y-axis inner lines for each channel"""
             # Get a list of all edges we want to consider
             all_candidates = (
-                part.edges().filter_by(Axis.Y).filter_by_position(Axis.Z, -0.85, -0.75)
+                part.edges()
+                .filter_by(Axis.X)
+                .filter_by_position(Axis.Z, -depth + 0.15, -depth + 0.25)
             )
             # Now let's select the inner Y-axis edges that we know we want
             start_edges = ShapeList()
-            for x in [-12.133, 0, 12.133]:
+            for y in [-3, 3]:
                 start_edges.extend(
-                    all_candidates.filter_by_position(Axis.X, x - 0.55, x + 0.55)
+                    all_candidates.filter_by_position(Axis.Y, y - 0.55, y + 0.55)
                 )
             return start_edges
 
@@ -192,7 +194,9 @@ def body_v203() -> LabelBase:
             return _match_edge
 
         cands_to_chamfer = (
-            part.edges().filter_by(Plane.XY).filter_by_position(Axis.Z, -0.85, -0.75)
+            part.edges()
+            .filter_by(Plane.XY)
+            .filter_by_position(Axis.Z, -depth + 0.15, -depth + 0.25)
         )
         # Now, expand the selection twice, following all edges touching the known good edges
         ext_1 = cands_to_chamfer.filter_by(_edge_matcher(_get_all_start_edges()))
