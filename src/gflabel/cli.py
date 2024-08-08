@@ -177,9 +177,7 @@ def run(argv: list[str] | None = None):
         action="store_true",
     )
 
-    parser.add_argument(
-        "labels", nargs="*" if "--vscode" in sys.argv else "+", metavar="LABEL"
-    )
+    parser.add_argument("labels", nargs="+", metavar="LABEL")
     parser.add_argument(
         "-d",
         "--divisions",
