@@ -100,7 +100,6 @@ class BaseChoiceAction(argparse.Action):
 
     def __call__(self, parser, namespace, values, _option_string=None):
         values = values.lower()
-        breakpoint()
         # Allow using these still
         deprecated_choices = {"webb": "cullenect"}
         if values in deprecated_choices:
@@ -124,7 +123,7 @@ class BaseChoiceAction(argparse.Action):
                 )
             else:
                 sys.exit(
-                    f"{parser.prog}: Error: {self.metavar}: Must be one of: {', '.join(choices)}"
+                    f"{parser.prog}: Error: {self.metavar}: Must be passed explicitly now, and be one of: {', '.join(choices)}"
                 )
 
         setattr(namespace, self.dest, values.lower())
