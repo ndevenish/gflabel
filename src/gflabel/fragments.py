@@ -354,12 +354,12 @@ def _fragment_hexnut(height: float, _maxsize: float) -> Sketch:
     return sketch.sketch
 
 
-@fragment("nut_profile", examples=["{nut_profile(2.5)}"])
+@fragment("nut_profile", examples=["{nut_profile}"])
 def _fragment_nut_profile(
-    height: float, _maxsize: float, in_width: str | None = None
+    height: float, _maxsize: float | None = None
 ) -> Sketch:
     """Hex nut profile."""
-    width = float(in_width)
+    width = height / 2.25
     
     _cutout_height = 1/10 * height
     _cutout_y = 1/4 * height
@@ -379,12 +379,12 @@ def _fragment_nut_profile(
     return sketch.sketch
 
 
-@fragment("locknut_profile", examples=["{locknut_profile(2.5)}"])
+@fragment("locknut_profile", examples=["{locknut_profile}"])
 def _fragment_nut_profile(
-    height: float, _maxsize: float, in_width: str | None = None
+    height: float, _maxsize: float | None = None
 ) -> Sketch:
     """Hex locking nut profile."""
-    width = float(in_width)
+    width = height / 2.25 * 3/2
     
     _cutout_height = 1/10 * height
     _cutout_y = 1/4 * height
