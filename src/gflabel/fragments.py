@@ -354,6 +354,32 @@ def _fragment_hexnut(height: float, _maxsize: float) -> Sketch:
     return sketch.sketch
 
 
+@fragment("nut_profile", examples=["{nut_profile(2.5)}"])
+def _fragment_nut_profile(
+    height: float, _maxsize: float, in_width: str | None = None
+) -> Sketch:
+    """Hex nut profile."""
+    width = float(in_width)
+    
+    _cutout_height = 1/10 * height
+    _cutout_y = 1/4 * height
+    
+    with BuildSketch() as sketch:
+        Rectangle(width, height)
+        
+        r1 = Rectangle(width, _cutout_height)
+        add(
+            r1.locate(Location((0, _cutout_y))),
+            mode = Mode.SUBTRACT,
+        )
+
+        add(
+            r1.locate(Location((0, -1 * _cutout_y))),
+            mode = Mode.SUBTRACT,
+        )
+    return sketch.sketch
+
+
 @fragment("washer", examples=["{washer}"])
 def _fragment_washer(height: float, _maxsize: float) -> Sketch:
     """Circular washer with a circular hole."""
