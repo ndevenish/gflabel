@@ -380,6 +380,13 @@ def _fragment_lockwasher(height: float, _maxsize: float) -> Sketch:
 
     return sketch.sketch
 
+@fragment("circle", examples=["{circle}"])
+def _fragment_circle(height: float, _maxsize: float) -> Sketch:
+    """A filled circle."""
+    with BuildSketch(mode=Mode.PRIVATE) as sketch:
+        Circle(height / 2)
+    return sketch.sketch
+
 
 class BoltBase(Fragment):
     """Base class for handling common bolt/screw configuration"""
