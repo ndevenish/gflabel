@@ -446,6 +446,10 @@ class BoltFragment(BoltBase):
         # The half-width of the dividing split
         half_split = 0.75
 
+        # With countersunk bolts, the length includes the head
+        if self.headshape == "countersunk":
+            length -= lw
+
         # Don't allow lengths smaller than lw
         # length = max(length, lw * 2 + half_split)
         maxsize = max(maxsize, lw * 2 + half_split * 2 + 0.1)
