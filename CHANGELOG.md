@@ -1,3 +1,10 @@
+# GFLabel 0.2.dev
+
+- Label base type must now always be specified. You can pass `--pred` to
+  get the old default kind. You can also specify partial/incomplete
+  names, as long as it is unambuguous (e.g. `gflabel cull` will select
+  `cullenect` labels).
+
 # GFLabel 0.1.7 (2024-05-30)
 
 - Bugfix: Symbol generation was broken by a reorganisation. Thanks to [@PaulBone](https://github.com/PaulBone).
