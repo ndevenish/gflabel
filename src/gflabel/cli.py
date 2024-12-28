@@ -222,8 +222,8 @@ def run(argv: list[str] | None = None):
         "-o",
         "--output",
         help="Output filename(s). [Default: %(default)s]",
-        default=["label.step"],
-        nargs="*",
+        default=[],
+        action="append",
     )
     parser.add_argument(
         "--style",
@@ -276,6 +276,9 @@ def run(argv: list[str] | None = None):
     logging.getLogger("build123d").setLevel(logging.WARNING)
 
     logger.debug(f"Args: {args}")
+
+    if not args.output:
+        args.output = ["label.step"]
 
     # We cannot have debossed labels with no label
     if args.base == "none" and args.style != LabelStyle.EMBOSSED:
@@ -391,8 +394,10 @@ def run(argv: list[str] | None = None):
 
     for output in args.output:
         if output.endswith(".stl"):
+            logger.info(f"Writing STL {output}")
             bd.export_stl(assembly, output)
         elif output.endswith(".step"):
+            logger.info(f"Writing STEP {output}")
             export_step(assembly, output)
         elif output.endswith(".svg"):
             max_dimension = max(

@@ -6,8 +6,14 @@
   `cullenect` labels).
 - Added ability to specify label base version, for labels with multiple
   standards version.
+<<<<<<< HEAD
 - Added alias "Robertson" for square-drive, as it is generally used in
   Canada. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
+||||||| parent of ab009af (Fix logic requiring output filename after label)
+=======
+- Bugfix: Specifying output filename will no longer break generation
+  when written before the label contents.
+>>>>>>> ab009af (Fix logic requiring output filename after label)
 
 # GFLabel 0.1.7 (2024-05-30)
 
