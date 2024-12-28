@@ -911,9 +911,12 @@ class ManifestItem(TypedDict):
 
 @functools.cache
 def electronic_symbols_manifest() -> list[ManifestItem]:
-    with importlib.resources.files("gflabel").joinpath("resources").joinpath(
-        "chris-pikul-symbols.zip"
-    ).open("rb") as f:
+    with (
+        importlib.resources.files("gflabel")
+        .joinpath("resources")
+        .joinpath("chris-pikul-symbols.zip")
+        .open("rb") as f
+    ):
         zip = zipfile.ZipFile(f)
         return json.loads(zip.read("manifest.json"))
 
@@ -1072,9 +1075,11 @@ class _electrical_symbol_fragment(Fragment):
     def __init__(self, *selectors: str):
         self.symbol = _match_electronic_symbol_with_selectors(selectors)
 
-        with importlib.resources.files("gflabel").joinpath(
-            "resources/chris-pikul-symbols.zip"
-        ).open("rb") as f:
+        with (
+            importlib.resources.files("gflabel")
+            .joinpath("resources/chris-pikul-symbols.zip")
+            .open("rb") as f
+        ):
             zip = zipfile.ZipFile(f)
             svg_data = io.StringIO(
                 zip.read("SVG/" + self.symbol["filename"] + ".svg").decode()
