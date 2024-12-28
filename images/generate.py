@@ -6,9 +6,15 @@ from __future__ import annotations
 
 import argparse
 import glob
+import shlex
+import shutil
 import subprocess
+import sys
 
 import gflabel.fragments as fragments
+
+if not shutil.which("svgo"):
+    sys.exit("Error: Requires svgo utility (https://svgo.dev/) to be on PATH")
 
 parser = argparse.ArgumentParser(description="Generate example images for GFlabel")
 
@@ -30,7 +36,7 @@ if all(not x for x in [getattr(args, name) for name in EXAMPLES]):
 
 def gflabel(*args):
     command = ["gflabel", "-v", *vscode, *args]
-    print("+ " + " ".join(command))
+    print("+ " + " ".join(shlex.quote(x) for x in command))
     subprocess.run(command, check=True)
 
 
@@ -51,10 +57,10 @@ if args.fragment:
         "{box(35)}",
     ]
 
-    HEAD = "gflabel --base=none -w=100 --height=12 --divisions=3 --vscode"
+    HEAD = "gflabel none -w=100 --height=12 --divisions=3 --vscode"
 
     command = [
-        "--base=none",
+        "none",
         "-w=100",
         "--height=12",
         "--divisions=3",
@@ -75,7 +81,7 @@ if args.drives:
     # Generate a table of head drive types
     command = [
         "gflabel",
-        "--base=none",
+        "none",
         "-w=100",
         "--height=12",
         "--divisions=4",
@@ -98,7 +104,7 @@ if args.bolt:
     # And bolt styles
     command = [
         "gflabel",
-        "--base=none",
+        "none",
         "-w=100",
         "--height=12",
         "--divisions=3",
@@ -132,19 +138,20 @@ if args.bolt:
         text = ",".join(style)
         command.extend(["", text, f"{{webbolt({text})}}"])
 
+    print("+ " + " ".join(shlex.quote(x) for x in command))
     subprocess.run(command)
 
 if args.symbols:
     manifest = fragments.electronic_symbols_manifest()
     command = [
         "gflabel",
-        "--base=none",
+        "none",
         "-w=200",
         "--height=12",
         "--divisions=6",
         "--font-size-maximum=5.3",
         "--output=symbols.svg",
-        "--gap=3",
+        "--label-gap=3",
         *vscode,
     ]
     names: dict[str, list[str]] = {}
@@ -185,14 +192,14 @@ if args.symbols:
         command.extend([f"{name}", f"{{symbol({sym['id']})}}"])
         # if i > 20:
         #     break
-    print("+ " + " ".join(command))
+    print("+ " + " ".join(shlex.quote(x) for x in command))
     subprocess.run(command)
 
 if args.columns:
     # ("division", "A\n{measure}" "B\n{measure}" "C\n{measure}"),
 
     gflabel(
-        "--base=predbox",
+        "predbox",
         "--width=5",
         "--divisions=3",
         "--box",
@@ -216,7 +223,7 @@ if args.columns:
 
     for name, example in column_examples:
         gflabel(
-            "--base=predbox",
+            "predbox",
             "--width=5",
             "--box",
             f"--output=column_{name}.svg",

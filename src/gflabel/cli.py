@@ -95,13 +95,52 @@ class ListSymbolsAction(argparse.Action):
         sys.exit(0)
 
 
+class BaseChoiceAction(argparse.Action):
+    """ArgumentParser Action to allow choice field with deprecated (hidden) options"""
+
+    def __call__(self, parser, namespace, values, _option_string=None):
+        values = values.lower()
+        # Allow using these still
+        deprecated_choices = {"webb": "cullenect"}
+        if values in deprecated_choices:
+            values = deprecated_choices[values]
+
+        choices = ["pred", "plain", "none", "cullenect", "predbox"]
+
+        if values not in choices:
+            # Allow prefix-only of choice name, as long as unambiguous
+            partially_chosen = [x for x in choices if x.startswith(values)]
+            if len(partially_chosen) == 1:
+                # Let's use this!
+                values = partially_chosen[0]
+            elif len(partially_chosen) > 1:
+                sys.exit(
+                    f"{parser.prog}: Error: {self.metavar}: Unambiguous partial choice (could be {', '.join(partially_chosen)})"
+                )
+            else:
+                sys.exit(
+                    f"{parser.prog}: Error: {self.metavar}: Must be passed explicitly now, and be one of: {', '.join(choices)}"
+                )
+
+        setattr(namespace, self.dest, values.lower())
+
+    def format_usage(self):
+        print("format_usage")
+        return self.option_strings[0]
+
+
 def run(argv: list[str] | None = None):
+    # Handle the old way of specifying base
+    if any(x.startswith("--base") for x in (argv or sys.argv)):
+        sys.exit(
+            "Error: --base is no longer the way to specify base geometry. Please pass in as a direct argument (gflabel <BASE>)"
+        )
     parser = ArgumentParser(description="Generate gridfinity bin labels")
     parser.add_argument(
-        "--base",
-        choices=["pred", "plain", "none", "webb", "predbox"],
-        default="pred",
-        help="Label base to generate onto. [Default: %(default)s]",
+        "base",
+        metavar="BASE",
+        help="Label base to generate onto (pred, plain, none, cullenect, predbox).",
+        action=BaseChoiceAction,
     )
     parser.add_argument(
         "--vscode",
@@ -134,9 +173,7 @@ def run(argv: list[str] | None = None):
         action="store_true",
     )
 
-    parser.add_argument(
-        "labels", nargs="*" if "--vscode" in sys.argv else "+", metavar="LABEL"
-    )
+    parser.add_argument("labels", nargs="+", metavar="LABEL")
     parser.add_argument(
         "-d",
         "--divisions",
@@ -185,8 +222,8 @@ def run(argv: list[str] | None = None):
         "-o",
         "--output",
         help="Output filename(s). [Default: %(default)s]",
-        default=["label.step"],
-        nargs="*",
+        default=[],
+        action="append",
     )
     parser.add_argument(
         "--style",
@@ -215,8 +252,12 @@ def run(argv: list[str] | None = None):
         "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
     )
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
-
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
+    parser.add_argument(
+        "--version",
+        help="The version of geometry to use for a given label system (if a system has versions). [Default: latest]",
+        default="latest",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -236,6 +277,9 @@ def run(argv: list[str] | None = None):
 
     logger.debug(f"Args: {args}")
 
+    if not args.output:
+        args.output = ["label.step"]
+
     # We cannot have debossed labels with no label
     if args.base == "none" and args.style != LabelStyle.EMBOSSED:
         logger.error("Error: Can only generate 'Embossed' style labels without a base.")
@@ -249,13 +293,13 @@ def run(argv: list[str] | None = None):
         args.labels = ["{webbolt(pozi)}{...}M3×20"]
 
     if not args.width:
-        if args.base in {"pred", "webb"}:
+        if args.base in {"pred", "cullenect"}:
             args.width = "1"
         else:
             sys.exit(f"Error: Must specify width for label base '{args.base}'.")
 
     if not args.margin:
-        if args.base == "webb":
+        if args.base == "cullenect":
             args.margin = 0
         if args.base == "predbox":
             # This recommends a 2-3mm border
@@ -284,8 +328,8 @@ def run(argv: list[str] | None = None):
                     f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
                 )
             body = plain.body(args.width, args.height)
-        elif args.base == "webb":
-            body = webb.body()
+        elif args.base == "cullenect":
+            body = webb.body(args.version)
         else:
             body = None
 
@@ -350,8 +394,10 @@ def run(argv: list[str] | None = None):
 
     for output in args.output:
         if output.endswith(".stl"):
+            logger.info(f"Writing STL {output}")
             bd.export_stl(assembly, output)
         elif output.endswith(".step"):
+            logger.info(f"Writing STEP {output}")
             export_step(assembly, output)
         elif output.endswith(".svg"):
             max_dimension = max(

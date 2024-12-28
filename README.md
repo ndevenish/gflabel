@@ -68,8 +68,7 @@ A simple, single label generation on a pred-style base:
 ```
 gflabel "Basic Label" -o basic.step
 ```
-![](images/example_basic.png)
-
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_basic.png)
 
 Symbols are specified with `{` curly braces `}`. If you specify more labels
 than divisions (which defaults to one), then multiple labels will be generated
@@ -79,14 +78,14 @@ with a single call:
 gflabel "{nut}M2" "{nut}M3" "{nut}M4"
 ```
 
-![](images/example_multi.png)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_multi.png)
 
 Or, if you specify divisions, then you can generate a multi-bin label (in this
 example, a margin is also added to ensure that the labels are not too dense):
 ```
 gflabel --width 2 --divisions=3 "{nut}M2" "{nut}M3" "{nut}M4" --vscode --margin=2
 ```
-![](images/example_multibin.png)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_multibin.png)
 
 You can span multiple lines, mix text and symbols, and some symbols can be
 passed configuration (e.g. in this case the bolt length is dynamically
@@ -94,20 +93,20 @@ specified as  20mm):
 ```
 gflabel "{head(hex)} {bolt(20)}\nM2×20"
 ```
-![](images/example_boltbin.png)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_boltbin.png)
 
 Some symbols can also take many modifiers for e.g. drive or head type:
 
 ```
 gflabel "{head(+)} {bolt(50,slotted,round)}\nM3×50"
 ```
-![](images/example_bolt_broken.png)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_bolt_broken.png)
 
 And multiple label styles/symbol styles/fonts can be selected:
 ```
 gflabel --base=webb --font=Arial "M3×20{...}{webbolt(+)}"
 ```
-![](images/example_webb.png)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_webb.png)
 
 Here's a more complex example, generating a [Pred Gridfinity Storage Box][predbox]
 label. This uses multiple proportioned columns, symbols, and alignment:
@@ -116,7 +115,7 @@ label. This uses multiple proportioned columns, symbols, and alignment:
 gflabel --base=predbox -w 5 "HEX\n{head(hex)} {bolt(5)}{3|}{<}M2\nM3\nM4\nM5{2|2}{<}M6\nM8\nM10\n"
 ```
 
-![](images/example_hex.png)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_hex.png)
 
 ## Command Parameters
 
@@ -206,11 +205,11 @@ The base (specified by `--base=TYPE`) defines the shape of what the label is gen
 
 | Base | Description | Image |
 | ---- | ----------- | ----- |
-| `pred` | For [Pred's parametric labelled bins][predlabel] labels. If specifying this style, then height is ignored and width is in gridfinity units (e.g. `--width=1` for a label for a single 42mm bin). | ![](images/base_pred.png) |
-| `predbox` | For labels matching the style of [Pred's Parametric Storage Box][predbox]. These are larger (~25 mm) labels for slotting in the front of the parametric storage boxes. `--width` is for the storage bin width, and is 4, 5, 6, or 7 u. | ![](images/base_predbox.png)
-| `plain` | For a blank, square label with a chamfered top edge. The specified width and height will be the whole area of the label base. You must specify at least a width. | ![](images/base_plain.png)
-| `webb` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](images/base_webb.png)
-| `none` | For no base at all - the label will still be extruded. This is useful if you want to generate a label model to place onto another volume in the slicer. | ![](images/base_none.png) |
+| `pred` | For [Pred's parametric labelled bins][predlabel] labels. If specifying this style, then height is ignored and width is in gridfinity units (e.g. `--width=1` for a label for a single 42mm bin). | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_pred.png) |
+| `predbox` | For labels matching the style of [Pred's Parametric Storage Box][predbox]. These are larger (~25 mm) labels for slotting in the front of the parametric storage boxes. `--width` is for the storage bin width, and is 4, 5, 6, or 7 u. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_predbox.png)
+| `plain` | For a blank, square label with a chamfered top edge. The specified width and height will be the whole area of the label base. You must specify at least a width. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_plain.png)
+| `webb` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_webb.png)
+| `none` | For no base at all - the label will still be extruded. This is useful if you want to generate a label model to place onto another volume in the slicer. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_none.png) |
 
 [predlabel]: https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame
 [predbox]: https://www.printables.com/model/543553-gridfinity-storage-box-by-pred-now-parametric
@@ -223,9 +222,9 @@ which can be set to `embossed`, `debossed`, or `embedded`:
 
 | Style    | Description | Image      |
 | -------- | ----------- | --------- |
-| Embossed | This is the default. The labels contents are extruded upwards out of the base, as raised features. You can print this multicoloured by changing material at a specific layer height. | ![](images/style_embossed.png)
-| Debossed | Instead of being raised, the label contents are cut into the base. You can also print this multicoloured by changing material at specific layer height.  | ![](images/style_debossed.png)
-| Embedded | The label contents are flush with the surface of the label. This can be printed with a multimaterial system, as it will require material changes within a single layer. You can print this label face-down. To print this, you will need to "Split to Parts" (Bambu/OrcaSlicer) in your slicer and manually change the selected material for the bases.  | ![](images/style_embedded.png)
+| Embossed | This is the default. The labels contents are extruded upwards out of the base, as raised features. You can print this multicoloured by changing material at a specific layer height. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/style_embossed.png)
+| Debossed | Instead of being raised, the label contents are cut into the base. You can also print this multicoloured by changing material at specific layer height.  | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/style_debossed.png)
+| Embedded | The label contents are flush with the surface of the label. This can be printed with a multimaterial system, as it will require material changes within a single layer. You can print this label face-down. To print this, you will need to "Split to Parts" (Bambu/OrcaSlicer) in your slicer and manually change the selected material for the bases.  | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/style_embedded.png)
 
 ### Text Style, and Fonts
 
@@ -260,9 +259,12 @@ A list of all the fragments currently recognised:
 | &lt;, &gt;        | Only used at the start of a single label or column. Specifies that all lines in the area should be left or right aligned. Invalid when specified elsewhere. |
 | bolt              | Variable length bolt, in the style of Printables pred-box labels.<br><br>If the requested bolt is longer than the available space, then the<br>bolt will be as large as possible with a broken thread. |
 | box               | Arbitrary width, height centered box. If height is not specified, will expand to row height. |
+| circle            | A filled circle.                                                  |
 | head              | Screw head with specifiable head-shape.                           |
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
+| nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
+| locknut_profile   | Rectangle with two horizontal lines, as the side view of a hex nut, with an added "top bump". |
 | lockwasher        | Circular washer with a locking cutout.                            |
 | magnet            | Horseshoe shaped magnet symbol.                                   |
 | measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
@@ -275,7 +277,7 @@ A list of all the fragments currently recognised:
 
 A basic set of examples showing the usage of some of these:
 
-![](images/examples.svg)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/examples.svg)
 
 ### Bolt/Screw Drives
 
@@ -284,7 +286,7 @@ head types, takes a feature specification for the kind of drive that you want
 to represent. These are stackable, so you can specify multiple drives and they
 will be overlapped. Examples of using the drive types are:
 
-![](images/drives.svg)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/drives.svg)
 
 ### Bolts and Screw Heads
 
@@ -309,7 +311,7 @@ both can be pointed backwards by adding the `flipped` feature.
 
 Examples showing some differences between the two bolts:
 
-![](images/bolts.svg)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/bolts.svg)
 
 ### Multiple Columns
 
@@ -327,8 +329,8 @@ divisions (left), and columns(right):
 $ gflabel "A\n{measure}" "B\n{measure}" "C\n{measure}"
 $ gflabel "A\n{measure}{|}B\n{measure}{|}C\n{measure}"
 ```
-![](images/column_division.svg)
-![](images/column_basic.svg)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/column_division.svg)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/column_basic.svg)
 
 > [!NOTE]
 > `{measure}` fragments have been added to make it easy to see how the layout
@@ -345,7 +347,7 @@ In this example, we've asked for 4:1:2 scaling:
 $ gflabel "A\n{measure}{4|}B\n{measure}{1|2}C\n{measure}"
 ```
 
-![](images/column_basic_proportion.svg)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/column_basic_proportion.svg)
 
 And here, we're combining the column fragments with the alignment fragment.
 Alignment markers can go at the start of any column:
@@ -354,7 +356,7 @@ Alignment markers can go at the start of any column:
 gflabel "{<}A\n{measure}{4|}{>}B\n{measure}{1|2}{<}C\n{measure}"
 ```
 
-![](images/column_basic_proportion_align.svg)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/column_basic_proportion_align.svg)
 
 
 ### Electronic Symbols
@@ -408,7 +410,7 @@ Here is a table of all symbols, rendered by GFLabel, with their name as per the
 source symbol library. Note that for some of the symbols, they are rendered
 incorrectly. This is an unresolved bug in GFLabel.
 
-![](images/symbols.svg)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/symbols.svg)
 
 # Bundled Dependencies
 
