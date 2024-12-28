@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from build123d import (
     Axis,
     BuildLine,
@@ -21,7 +23,7 @@ from build123d import (
 from . import LabelBase
 
 
-def body() -> LabelBase:
+def body_v11() -> LabelBase:
     """
     Generate a Webb-style label body
 
@@ -115,3 +117,30 @@ def body() -> LabelBase:
         chamfer(ext_2, length=0.1999, length2=0.1)
 
     return LabelBase(part.part, Vector(36.4, 11))
+
+
+def body(version: str = "latest") -> LabelBase:
+    """
+    Generate a Webb-style label body
+
+    Origin is positioned at the center of the label, with the label
+    surface at z=0.
+
+    Returns:
+        A LabelBase tuple consisting of:
+            part: The actual label body.
+            label_area: A vector describing the width, height of the usable area.
+    """
+    known_versions = {"latest", "v1.1"}
+    if version == "latest":
+        version = "v1.1"
+    if version not in known_versions:
+        sys.exit(
+            f"Error: Unknown cullenect version: {version}. Valid options: {', '.join(known_versions)}"
+        )
+    if version == "v1.1":
+        return body_v11()
+
+    raise RuntimeError(
+        "Error: Got to end of cullenect generation without choosing a body!"
+    )

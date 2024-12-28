@@ -4,6 +4,8 @@
   get the old default kind. You can also specify partial/incomplete
   names, as long as it is unambuguous (e.g. `gflabel cull` will select
   `cullenect` labels).
+- Added ability to specify label base version, for labels with multiple
+  standards version.
 
 # GFLabel 0.1.7 (2024-05-30)
 

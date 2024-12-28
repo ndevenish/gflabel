@@ -252,8 +252,12 @@ def run(argv: list[str] | None = None):
         "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
     )
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
-
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
+    parser.add_argument(
+        "--version",
+        help="The version of geometry to use for a given label system (if a system has versions). [Default: latest]",
+        default="latest",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -322,7 +326,7 @@ def run(argv: list[str] | None = None):
                 )
             body = plain.body(args.width, args.height)
         elif args.base == "cullenect":
-            body = webb.body()
+            body = webb.body(args.version)
         else:
             body = None
 
