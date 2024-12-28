@@ -11,6 +11,8 @@
 - Added `{circle} {nut_profile} {locknut_profile}` fragments. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
 - Bugfix: Specifying output filename will no longer break generation
   when written before the label contents.
+- Bugfix: Countersunk screws were incorrectly treating the head of the
+  screw separately from the body length. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
 
 # GFLabel 0.1.7 (2024-05-30)
 
