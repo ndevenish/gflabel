@@ -8,6 +8,7 @@
   standards version.
 - Added alias "Robertson" for square-drive, as it is generally used in
   Canada. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
+- Added `{circle} {nut_profile} {locknut_profile}` fragments. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
 - Bugfix: Specifying output filename will no longer break generation
   when written before the label contents.
 

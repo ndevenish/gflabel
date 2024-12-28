@@ -355,6 +355,74 @@ def _fragment_hexnut(height: float, _maxsize: float) -> Sketch:
     return sketch.sketch
 
 
+@fragment("nut_profile", examples=["{nut_profile}"])
+def _fragment_nut_profile(
+    height: float, _maxsize: float | None = None
+) -> Sketch:
+    """Hex nut profile."""
+    width = height / 2.25
+    
+    _cutout_height = 1/10 * height
+    _cutout_y = 1/4 * height
+    
+    with BuildSketch() as sketch:
+        Rectangle(width, height)
+        
+        r1 = Rectangle(width, _cutout_height)
+        add(
+            r1.locate(Location((0, _cutout_y))),
+            mode = Mode.SUBTRACT,
+        )
+        add(
+            r1.locate(Location((0, -1 * _cutout_y))),
+            mode = Mode.SUBTRACT,
+        )
+    return sketch.sketch
+
+
+@fragment("locknut_profile", examples=["{locknut_profile}"])
+def _fragment_nut_profile(
+    height: float, _maxsize: float | None = None
+) -> Sketch:
+    """Hex locking nut profile."""
+    width = height / 2.25 * 3/2
+    
+    _cutout_height = 1/10 * height
+    _cutout_y = 1/4 * height
+
+    _circle_y = height * 0.2
+    
+    with BuildSketch() as sketch:
+        Rectangle(width * 2/3, height)
+        # add(
+        #     r1.locate(Location((width * 1/3, 0))),
+        # )
+
+        c2 = Circle(width * 1/3)
+        add(
+            c2.locate(Location((-1 * width * 1/3, _circle_y))),
+        )
+        add(
+            c2.locate(Location((-1 * width * 1/3, -1 * _circle_y))),
+        )
+
+        r3 = Rectangle(width * 1/3, 2 * _circle_y)
+        add(
+            r3.locate(Location((-1 * width * 1/2, 0)))
+        )
+        
+        r1 = Rectangle(width * 2/3, _cutout_height)
+        add(
+            r1.locate(Location((0, _cutout_y))),
+            mode = Mode.SUBTRACT,
+        )
+        add(
+            r1.locate(Location((0, -1 * _cutout_y))),
+            mode = Mode.SUBTRACT,
+        )
+    return sketch.sketch
+
+
 @fragment("washer", examples=["{washer}"])
 def _fragment_washer(height: float, _maxsize: float) -> Sketch:
     """Circular washer with a circular hole."""
@@ -379,6 +447,13 @@ def _fragment_lockwasher(height: float, _maxsize: float) -> Sketch:
             mode=Mode.SUBTRACT,
         )
 
+    return sketch.sketch
+
+@fragment("circle", examples=["{circle}"])
+def _fragment_circle(height: float, _maxsize: float) -> Sketch:
+    """A filled circle."""
+    with BuildSketch(mode=Mode.PRIVATE) as sketch:
+        Circle(height / 2)
     return sketch.sketch
 
 

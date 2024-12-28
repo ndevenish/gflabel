@@ -259,9 +259,12 @@ A list of all the fragments currently recognised:
 | &lt;, &gt;        | Only used at the start of a single label or column. Specifies that all lines in the area should be left or right aligned. Invalid when specified elsewhere. |
 | bolt              | Variable length bolt, in the style of Printables pred-box labels.<br><br>If the requested bolt is longer than the available space, then the<br>bolt will be as large as possible with a broken thread. |
 | box               | Arbitrary width, height centered box. If height is not specified, will expand to row height. |
+| circle            | A filled circle.                                                  |
 | head              | Screw head with specifiable head-shape.                           |
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
+| nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
+| locknut_profile   | Rectangle with two horizontal lines, as the side view of a hex nut, with an added "top bump". |
 | lockwasher        | Circular washer with a locking cutout.                            |
 | magnet            | Horseshoe shaped magnet symbol.                                   |
 | measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
