@@ -6,6 +6,8 @@
   `cullenect` labels).
 - Added ability to specify label base version, for labels with multiple
   standards version.
+- Added alias "Robertson" for square-drive, as it is generally used in
+  Canada. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
 
 # GFLabel 0.1.7 (2024-05-30)
 

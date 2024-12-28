@@ -62,6 +62,7 @@ DRIVE_ALIASES = {
     "pozi": "pozidrive",
     "-": "slot",
     "tri": "triangle",
+    "robertson": "square",
 }
 DRIVES = {
     "phillips",
