@@ -66,7 +66,7 @@ this with `-o FILENAME`. `.step`, `.stl` and `.svg` are recognised
 A simple, single label generation on a pred-style base:
 
 ```
-gflabel "Basic Label" -o basic.step
+gflabel pred "Basic Label" -o basic.step
 ```
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_basic.png)
 
@@ -75,7 +75,7 @@ than divisions (which defaults to one), then multiple labels will be generated
 with a single call:
 
 ```
-gflabel "{nut}M2" "{nut}M3" "{nut}M4"
+gflabel pred "{nut}M2" "{nut}M3" "{nut}M4"
 ```
 
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_multi.png)
@@ -83,7 +83,7 @@ gflabel "{nut}M2" "{nut}M3" "{nut}M4"
 Or, if you specify divisions, then you can generate a multi-bin label (in this
 example, a margin is also added to ensure that the labels are not too dense):
 ```
-gflabel --width 2 --divisions=3 "{nut}M2" "{nut}M3" "{nut}M4" --vscode --margin=2
+gflabel pred --width 2 --divisions=3 "{nut}M2" "{nut}M3" "{nut}M4" --vscode --margin=2
 ```
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_multibin.png)
 
@@ -91,20 +91,20 @@ You can span multiple lines, mix text and symbols, and some symbols can be
 passed configuration (e.g. in this case the bolt length is dynamically
 specified as  20mm):
 ```
-gflabel "{head(hex)} {bolt(20)}\nM2×20"
+gflabel pred "{head(hex)} {bolt(20)}\nM2×20"
 ```
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_boltbin.png)
 
 Some symbols can also take many modifiers for e.g. drive or head type:
 
 ```
-gflabel "{head(+)} {bolt(50,slotted,round)}\nM3×50"
+gflabel pred "{head(+)} {bolt(50,slotted,round)}\nM3×50"
 ```
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_bolt_broken.png)
 
 And multiple label styles/symbol styles/fonts can be selected:
 ```
-gflabel --base=webb --font=Arial "M3×20{...}{webbolt(+)}"
+gflabel cullenect --font=Arial "M3×20{...}{webbolt(+)}"
 ```
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_webb.png)
 
@@ -112,7 +112,7 @@ Here's a more complex example, generating a [Pred Gridfinity Storage Box][predbo
 label. This uses multiple proportioned columns, symbols, and alignment:
 
 ```
-gflabel --base=predbox -w 5 "HEX\n{head(hex)} {bolt(5)}{3|}{<}M2\nM3\nM4\nM5{2|2}{<}M6\nM8\nM10\n"
+gflabel predbox -w 5 "HEX\n{head(hex)} {bolt(5)}{3|}{<}M2\nM3\nM4\nM5{2|2}{<}M6\nM8\nM10\n"
 ```
 
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_hex.png)
@@ -122,53 +122,44 @@ gflabel --base=predbox -w 5 "HEX\n{head(hex)} {bolt(5)}{3|}{<}M2\nM3\nM4\nM5{2|2
 The full command parameter usage (as generate by `gflabel --help`):
 
 ```
-usage: gflabel [-h] [--base {pred,plain,none,webb,predbox}] [--vscode] [-w WIDTH]
-               [--height HEIGHT] [--depth DEPTH_MM] [--no-overheight] [-d DIVISIONS]
-               [--font FONT]
-               [--font-size-maximum FONT_SIZE_MAXIMUM | --font-size FONT_SIZE]
-               [--font-style {regular,bold,italic}] [--margin MARGIN]
-               [-o [OUTPUT ...]] [--style {embossed,debossed,embedded}]
-               [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP]
-               [--column-gap COLUMN_GAP] [-v]
-               LABEL [LABEL ...]
+usage: gflabel [-h] [--vscode] [-w WIDTH] [--height HEIGHT] [--depth DEPTH_MM] [--no-overheight] [-d DIVISIONS] [--font FONT]
+               [--font-size-maximum FONT_SIZE_MAXIMUM | --font-size FONT_SIZE] [--font-style {regular,bold,italic}] [--font-path FONT_PATH]
+               [--margin MARGIN] [-o OUTPUT] [--style {embossed,debossed,embedded}] [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP]
+               [--column-gap COLUMN_GAP] [-v] [--version VERSION]
+               BASE LABEL [LABEL ...]
 
 Generate gridfinity bin labels
 
 positional arguments:
+  BASE                  Label base to generate onto (pred, plain, none, cullenect, predbox).
   LABEL
 
 options:
   -h, --help            show this help message and exit
-  --base {pred,plain,none,webb,predbox}
-                        Label base to generate onto. [Default: pred]
   --vscode              Run in vscode_ocp mode, and show the label afterwards.
   -w WIDTH, --width WIDTH
-                        Label width. If using a gridfinity standard base, then this is
-                        width in U. Otherwise, width in mm.
+                        Label width. If using a gridfinity standard base, then this is width in U. Otherwise, width in mm.
   --height HEIGHT       Label height, in mm. Ignored for standardised label bases.
   --depth DEPTH_MM      How high (or deep) the label extrusion is.
-  --no-overheight       Disable the 'Overheight' system. This allows some symbols to
-                        oversize, meaning that the rest of the line will first shrink
+  --no-overheight       Disable the 'Overheight' system. This allows some symbols to oversize, meaning that the rest of the line will first shrink
                         before they are shrunk.
   -d DIVISIONS, --divisions DIVISIONS
-                        How many areas to divide a single label into. If more labels
-                        that this are requested, multiple labels will be generated.
+                        How many areas to divide a single label into. If more labels that this are requested, multiple labels will be generated.
                         Default: 1.
-  --font FONT           The font to use for rendering. [Default: Futura]
+  --font FONT           The name of the system font to use for rendering. If unspecified, a bundled version of Open Sans will be used. Set GFLABEL_FONT
+                        in your environment to change the default.
   --font-size-maximum FONT_SIZE_MAXIMUM
-                        Specify a maximum font size (in mm) to use for rendering. The
-                        text may end up smaller than this if it needs to fit in the
-                        area.
+                        Specify a maximum font size (in mm) to use for rendering. The text may end up smaller than this if it needs to fit in the area.
   --font-size FONT_SIZE
-                        The font size (in mm) to use for rendering. If unset, then the
-                        font will use as much vertical space as needed (that also fits
+                        The font size (in mm) to use for rendering. If unset, then the font will use as much vertical space as needed (that also fits
                         within the horizontal area).
   --font-style {regular,bold,italic}
                         The font style use for rendering. [Default: regular]
-  --margin MARGIN       The margin area (in mm) to leave around the label contents.
-                        Default is per-base.
-  -o [OUTPUT ...], --output [OUTPUT ...]
-                        Output filename(s). [Default: ['label.step']]
+  --font-path FONT_PATH
+                        Path to font file, if not using a system-level font.
+  --margin MARGIN       The margin area (in mm) to leave around the label contents. Default is per-base.
+  -o OUTPUT, --output OUTPUT
+                        Output filename(s). [Default: []]
   --style {embossed,debossed,embedded}
                         How the label contents are formed.
   --list-fragments      List all available fragments.
@@ -178,6 +169,7 @@ options:
   --column-gap COLUMN_GAP
                         Gap (in mm) between columns
   -v, --verbose         Verbose output
+  --version VERSION     The version of geometry to use for a given label system (if a system has versions). [Default: latest]
 ```
 
 ## Defining Labels
