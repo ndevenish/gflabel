@@ -36,7 +36,7 @@ from build123d import (
 )
 
 from . import fragments
-from .bases import plain, pred, webb
+from .bases import modern, plain, pred, webb
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
 from .util import IndentingRichHandler, batched
@@ -105,7 +105,7 @@ class BaseChoiceAction(argparse.Action):
         if values in deprecated_choices:
             values = deprecated_choices[values]
 
-        choices = ["pred", "plain", "none", "cullenect", "predbox"]
+        choices = ["pred", "plain", "none", "cullenect", "predbox", "modern"]
 
         if values not in choices:
             # Allow prefix-only of choice name, as long as unambiguous
@@ -139,7 +139,7 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "base",
         metavar="BASE",
-        help="Label base to generate onto (pred, plain, none, cullenect, predbox).",
+        help="Label base to generate onto (pred, plain, none, cullenect, predbox, modern).",
         action=BaseChoiceAction,
     )
     parser.add_argument(
@@ -330,6 +330,8 @@ def run(argv: list[str] | None = None):
             body = plain.body(args.width, args.height)
         elif args.base == "cullenect":
             body = webb.body(args.version)
+        elif args.base == "modern":
+            body = modern.body(args.width)
         else:
             body = None
 

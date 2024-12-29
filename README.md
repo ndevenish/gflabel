@@ -201,10 +201,12 @@ The base (specified by `--base=TYPE`) defines the shape of what the label is gen
 | `predbox` | For labels matching the style of [Pred's Parametric Storage Box][predbox]. These are larger (~25 mm) labels for slotting in the front of the parametric storage boxes. `--width` is for the storage bin width, and is 4, 5, 6, or 7 u. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_predbox.png)
 | `plain` | For a blank, square label with a chamfered top edge. The specified width and height will be the whole area of the label base. You must specify at least a width. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_plain.png)
 | `webb` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_webb.png)
+| `modern` | For [Modern Gridfinity Case][modern] labels, ~22 mm high labels that slot into the front. `--width` is for the storage bin width, and can be 3, 4, 5, 6, 7 or 8 u. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_modern.png) |
 | `none` | For no base at all - the label will still be extruded. This is useful if you want to generate a label model to place onto another volume in the slicer. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_none.png) |
 
 [predlabel]: https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame
 [predbox]: https://www.printables.com/model/543553-gridfinity-storage-box-by-pred-now-parametric
+[modern]: https://www.printables.com/model/894202-modern-gridfinity-case
 
 ### Label Styles
 
