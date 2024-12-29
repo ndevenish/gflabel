@@ -12,6 +12,7 @@ from build123d import (
     Plane,
     Polyline,
     RectangleRounded,
+    Select,
     ShapeList,
     Vector,
     chamfer,
@@ -119,6 +120,51 @@ def body_v11() -> LabelBase:
     return LabelBase(part.part, Vector(36.4, 11))
 
 
+def body_v200() -> LabelBase:
+    width = 36.4
+    height = 11
+    depth = 1.2
+    with BuildPart() as part:
+        # Label body
+        with BuildSketch():
+            RectangleRounded(width=width, height=height, radius=0.5)
+        extrude(amount=-depth)
+
+        # Label edge inset
+        with BuildSketch(Plane.XY.offset(-0.4)):
+            RectangleRounded(width=width, height=height, radius=0.5)
+            RectangleRounded(
+                width=width - 0.4, height=height - 0.4, radius=0.3, mode=Mode.SUBTRACT
+            )
+        extrude(amount=-(depth - 0.6), mode=Mode.SUBTRACT)
+
+        # v1 Cuttings
+        with BuildSketch(Plane.XZ) as _sketch:
+            for x in [-12.133, 0, 12.133]:
+                with BuildLine() as _line:
+                    Polyline(
+                        [
+                            (x - 0.5, -depth),
+                            (x - 0.5, -depth + 0.2),
+                            (x - 1, -depth + 0.2),
+                            (x - 1, -depth + 0.8),
+                            (x + 1, -depth + 0.8),
+                            (x + 1, -depth + 0.2),
+                            (x + 0.5, -depth + 0.2),
+                            (x + 0.5, -depth),
+                        ],
+                        close=True,
+                    )
+                    # mirror(_line.line, Plane.YZ)
+                make_face()
+        extrude(amount=height / 2, both=True, mode=Mode.SUBTRACT)
+        # Fillet the edges of these
+        edges = part.edges(Select.LAST).filter_by(Axis.Z)
+        fillet(edges, radius=0.5)
+
+    return LabelBase(part.part, Vector(36.4, 11))
+
+
 def body(version: str = "latest") -> LabelBase:
     """
     Generate a Webb-style label body
@@ -131,15 +177,18 @@ def body(version: str = "latest") -> LabelBase:
             part: The actual label body.
             label_area: A vector describing the width, height of the usable area.
     """
-    known_versions = {"latest", "v1.1"}
+    known_versions = {"latest", "v1.1", "v2.0.0"}
     if version == "latest":
-        version = "v1.1"
+        version = "v2.0.0"
     if version not in known_versions:
         sys.exit(
             f"Error: Unknown cullenect version: {version}. Valid options: {', '.join(known_versions)}"
         )
+
     if version == "v1.1":
         return body_v11()
+    elif version == "v2.0.0":
+        return body_v200()
 
     raise RuntimeError(
         "Error: Got to end of cullenect generation without choosing a body!"

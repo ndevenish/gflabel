@@ -1,5 +1,9 @@
 # GFLabel 0.2.dev
 
+- The "webb" base type has been renamed to "cullenect", to reflect the
+  label system being renamed. "webb" will still work, but usage is
+  deprecated.
+- Updated Cullenect labels to match the V2 geometry.
 - Label base type must now always be specified. You can pass `--pred` to
   get the old default kind. You can also specify partial/incomplete
   names, as long as it is unambuguous (e.g. `gflabel cull` will select
