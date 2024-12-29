@@ -277,7 +277,7 @@ def run(argv: list[str] | None = None):
 
     logger.debug(f"Args: {args}")
 
-    if not args.output:
+    if not args.output and not args.vscode:
         args.output = ["label.step"]
 
     # We cannot have debossed labels with no label
@@ -422,7 +422,9 @@ def run(argv: list[str] | None = None):
         if is_2d:
             show_parts.append(label_sketch.sketch)
         else:
+            logger.info("Writing SVG label.stl")
             bd.export_stl(assembly, "label.stl")
+            logger.info("Writing STEP label.step")
             export_step(assembly, "label.step")
             if args.style == LabelStyle.EMBEDDED:
                 show_parts.append(part.part)
@@ -450,3 +452,7 @@ def run(argv: list[str] | None = None):
             # position=[0, -10, 10],
             # target=[0, 0, 0],
         )
+
+
+if __name__ == "__main__":
+    run()
