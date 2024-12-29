@@ -1,7 +1,7 @@
 # GFLabel
 
-Generates 3d printable labels for labelled [gridfinity][gridfinity] bins (primarily
-[pred][pred] and [Cullen J Webb][webb] labels), and similar
+Generates 3d printable labels for labelled [gridfinity][gridfinity] bins (such as
+[pred][pred], [Cullen J Webb][webb] and [Modern Gridfinity Case][modern] labels), and similar
 generate-smallish-printable-label uses. Leverages [build123d][build123d].
 
 [gridfinity]: https://gridfinity.xyz/
