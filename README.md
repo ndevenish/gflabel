@@ -320,8 +320,8 @@ gap (controled by `--column-gap`). Here's a label split into three with
 divisions (left), and columns(right):
 
 ```
-$ gflabel "A\n{measure}" "B\n{measure}" "C\n{measure}"
-$ gflabel "A\n{measure}{|}B\n{measure}{|}C\n{measure}"
+$ gflabel predbox -w=3 --divisions=3 "A\n{measure}" "B\n{measure}" "C\n{measure}"
+$ gflabel predbox -w=3               "A\n{measure}{|}B\n{measure}{|}C\n{measure}"
 ```
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/column_division.svg)
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/column_basic.svg)
@@ -338,7 +338,7 @@ to whatever the other side is.
 In this example, we've asked for 4:1:2 scaling:
 
 ```
-$ gflabel "A\n{measure}{4|}B\n{measure}{1|2}C\n{measure}"
+$ gflabel predbox -w=5 "A\n{measure}{4|}B\n{measure}{1|2}C\n{measure}"
 ```
 
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/column_basic_proportion.svg)
@@ -347,7 +347,7 @@ And here, we're combining the column fragments with the alignment fragment.
 Alignment markers can go at the start of any column:
 
 ```
-gflabel "{<}A\n{measure}{4|}{>}B\n{measure}{1|2}{<}C\n{measure}"
+gflabel predbox -w=5 "{<}A\n{measure}{4|}{>}B\n{measure}{1|2}{<}C\n{measure}"
 ```
 
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/column_basic_proportion_align.svg)
@@ -382,7 +382,7 @@ enough to disambiguate between the possible options, so the table of matches
 is printed to help you refine the definition:
 
 ```
-$ gflabel '{symbol(ground)}'
+$ gflabel [...] '{symbol(ground)}'
 ...
 Could not decide on symbol from fuzzy specification "ground". Possible options:
     ID                 Category Name                  Standard Filename

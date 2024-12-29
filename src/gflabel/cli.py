@@ -286,7 +286,7 @@ def run(argv: list[str] | None = None):
         sys.exit(1)
 
     # We don't need to generate 3D shapes if we are only doing SVG
-    is_2d = all([x.endswith(".svg") for x in args.output])
+    is_2d = args.output and all([x.endswith(".svg") for x in args.output])
 
     # If running in VSCode mode, then we can hardcode a label here
     if not args.labels:
