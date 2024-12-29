@@ -45,6 +45,9 @@ def body(width: int) -> LabelBase:
             label_area: A vector describing the width, height of the usable area.
     """
 
+    EXTRA_WIDTH_TOL = 0.5
+    EXTRA_INDENT_TOL = 0.4
+    INDENT_DEPTH = 0.6 + 0.2
     KNOWN_WIDTHS = {3: 31.8, 4: 50.8, 5: 75.8, 6: 115.8, 7: 140.800, 8: 140.800}
     KNOWN_INDENT_WIDTHS = {
         3: 16,
@@ -58,7 +61,7 @@ def body(width: int) -> LabelBase:
     if width not in KNOWN_WIDTHS:
         sys.exit(f"Error: Do not know how wide to create 'modern' label for {width} u")
 
-    W = KNOWN_WIDTHS[width]
+    W = KNOWN_WIDTHS[width] - EXTRA_WIDTH_TOL
     H = 22.117157  # I cannot work out the basis for this value
     depth = 2.2
 
@@ -101,9 +104,9 @@ def body(width: int) -> LabelBase:
         # 60mm x 13mm, 4.7m from bottom
         with Locations([(0, -H / 2 + 4.7, -depth)]):
             Box(
-                KNOWN_INDENT_WIDTHS[width],
+                KNOWN_INDENT_WIDTHS[width] + EXTRA_INDENT_TOL,
                 13,
-                0.6,
+                INDENT_DEPTH,
                 mode=Mode.SUBTRACT,
                 align=(Align.CENTER, Align.MIN, Align.MIN),
             )
