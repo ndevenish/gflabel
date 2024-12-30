@@ -4,5 +4,5 @@ __pycache__/
 .pytype/
 *.egg-info/
 dist/
-
+images/
 .DS_Store
