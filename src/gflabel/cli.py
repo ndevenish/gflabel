@@ -329,7 +329,7 @@ def run(argv: list[str] | None = None):
                 )
             body = plain.body(args.width, args.height)
         elif args.base == "cullenect":
-            body = cullenect.body(args.version)
+            body = cullenect.body(args.version, args.width)
         elif args.base == "modern":
             body = modern.body(args.width)
         else:
