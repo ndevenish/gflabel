@@ -4,6 +4,7 @@
   label system being renamed. "webb" will still work, but usage is
   deprecated.
 - Updated Cullenect labels to match the V2 geometry.
+- Added new base: `modern`, to generate labels for [Modern Gridfinity Base][modern].
 - Label base type must now always be specified. You can pass `--pred` to
   get the old default kind. You can also specify partial/incomplete
   names, as long as it is unambuguous (e.g. `gflabel cull` will select
@@ -17,6 +18,8 @@
   when written before the label contents.
 - Bugfix: Countersunk screws were incorrectly treating the head of the
   screw separately from the body length. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
+
+[modern]: https://www.printables.com/model/894202-modern-gridfinity-case
 
 # GFLabel 0.1.7 (2024-05-30)
 

@@ -36,7 +36,7 @@ from build123d import (
 )
 
 from . import fragments
-from .bases import plain, pred, webb
+from .bases import modern, plain, pred, webb
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
 from .util import IndentingRichHandler, batched
@@ -105,7 +105,7 @@ class BaseChoiceAction(argparse.Action):
         if values in deprecated_choices:
             values = deprecated_choices[values]
 
-        choices = ["pred", "plain", "none", "cullenect", "predbox"]
+        choices = ["pred", "plain", "none", "cullenect", "predbox", "modern"]
 
         if values not in choices:
             # Allow prefix-only of choice name, as long as unambiguous
@@ -139,7 +139,7 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "base",
         metavar="BASE",
-        help="Label base to generate onto (pred, plain, none, cullenect, predbox).",
+        help="Label base to generate onto (pred, plain, none, cullenect, predbox, modern).",
         action=BaseChoiceAction,
     )
     parser.add_argument(
@@ -286,7 +286,7 @@ def run(argv: list[str] | None = None):
         sys.exit(1)
 
     # We don't need to generate 3D shapes if we are only doing SVG
-    is_2d = all([x.endswith(".svg") for x in args.output])
+    is_2d = args.output and all([x.endswith(".svg") for x in args.output])
 
     # If running in VSCode mode, then we can hardcode a label here
     if not args.labels:
@@ -330,6 +330,8 @@ def run(argv: list[str] | None = None):
             body = plain.body(args.width, args.height)
         elif args.base == "cullenect":
             body = webb.body(args.version)
+        elif args.base == "modern":
+            body = modern.body(args.width)
         else:
             body = None
 
