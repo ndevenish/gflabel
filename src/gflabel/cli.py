@@ -36,7 +36,7 @@ from build123d import (
 )
 
 from . import fragments
-from .bases import modern, plain, pred, webb
+from .bases import cullenect, modern, plain, pred
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
 from .util import IndentingRichHandler, batched
@@ -290,7 +290,7 @@ def run(argv: list[str] | None = None):
 
     # If running in VSCode mode, then we can hardcode a label here
     if not args.labels:
-        args.labels = ["{webbolt(pozi)}{...}M3×20"]
+        args.labels = ["{cullbolt(pozi)}{...}M3×20"]
 
     if not args.width:
         if args.base in {"pred", "cullenect"}:
@@ -329,7 +329,7 @@ def run(argv: list[str] | None = None):
                 )
             body = plain.body(args.width, args.height)
         elif args.base == "cullenect":
-            body = webb.body(args.version)
+            body = cullenect.body(args.version, args.width)
         elif args.base == "modern":
             body = modern.body(args.width)
         else:

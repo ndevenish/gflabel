@@ -1,5 +1,11 @@
 # GFLabel 0.2.dev
 
+- The "webb" base type has been renamed to "cullenect", to reflect the
+  label system being renamed. "webb" will still work, but usage is
+  deprecated. The fragment `{webbolt}` has been renamed to
+  `{cullbolt}`/`{cullenectbolt}` accordingly, but the old name will also still
+  work.
+- Updated Cullenect labels to match the V2 geometry.
 - Added new base: `modern`, to generate labels for [Modern Gridfinity Base][modern].
 - Label base type must now always be specified. You can pass `--pred` to
   get the old default kind. You can also specify partial/incomplete

@@ -124,7 +124,7 @@ if args.bolt:
         *vscode,
         "bolt(10,",
         "Style",
-        "webbolt",
+        "cullbolt",
     ]
 
     for style in [
@@ -136,7 +136,7 @@ if args.bolt:
         ["flipped"],
     ]:
         text = ",".join(style)
-        command.extend([f"{{bolt(10,{text})}}", text, f"{{webbolt({text})}}"])
+        command.extend([f"{{bolt(10,{text})}}", text, f"{{cullbolt({text})}}"])
 
     # Bolt-only
     for style in [["slot"], ["pan,flanged"]]:
@@ -146,7 +146,7 @@ if args.bolt:
     # Webb-only
     for style in [["partial"], ["hex", "security"]]:
         text = ",".join(style)
-        command.extend(["", text, f"{{webbolt({text})}}"])
+        command.extend(["", text, f"{{cullbolt({text})}}"])
 
     print("+ " + " ".join(shlex.quote(x) for x in command))
     subprocess.run(command)

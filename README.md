@@ -104,7 +104,7 @@ gflabel pred "{head(+)} {bolt(50,slotted,round)}\nM3×50"
 
 And multiple label styles/symbol styles/fonts can be selected:
 ```
-gflabel cullenect --font=Arial "M3×20{...}{webbolt(+)}"
+gflabel cullenect --font=Arial "M3×20{...}{cullbolt(+)}"
 ```
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_webb.png)
 
@@ -200,7 +200,7 @@ The base (specified by `--base=TYPE`) defines the shape of what the label is gen
 | `pred` | For [Pred's parametric labelled bins][predlabel] labels. If specifying this style, then height is ignored and width is in gridfinity units (e.g. `--width=1` for a label for a single 42mm bin). | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_pred.png) |
 | `predbox` | For labels matching the style of [Pred's Parametric Storage Box][predbox]. These are larger (~25 mm) labels for slotting in the front of the parametric storage boxes. `--width` is for the storage bin width, and is 4, 5, 6, or 7 u. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_predbox.png)
 | `plain` | For a blank, square label with a chamfered top edge. The specified width and height will be the whole area of the label base. You must specify at least a width. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_plain.png)
-| `webb` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_webb.png)
+| `cullenect` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_cullenect.png)
 | `modern` | For [Modern Gridfinity Case][modern] labels, ~22 mm high labels that slot into the front. `--width` is for the storage bin width, and can be 3, 4, 5, 6, 7 or 8 u. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_modern.png) |
 | `none` | For no base at all - the label will still be extruded. This is useful if you want to generate a label model to place onto another volume in the slicer. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_none.png) |
 
@@ -266,7 +266,7 @@ A list of all the fragments currently recognised:
 | threaded_insert   | Representation of a threaded insert.                              |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
 | washer            | Circular washer with a circular hole.                             |
-| webbolt           | Alternate bolt representation incorporating screw drive, with fixed length. |
+| cullbolt          | Alternate bolt representation incorporating screw drive, with fixed length, as used by the [Cullenect][cullenect] system. |
 | `\|` (pipe)       | Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment. |
 
 A basic set of examples showing the usage of some of these:
@@ -295,9 +295,11 @@ There are two classes of bolt/screw representation:
   on the top of the head, and `flanged` in order to render a washer-style
   flange at the bottom of the active head.
 - `webb` corresponding to the bolt style included with [Cullen J Webb's swappable
-  gridfinity label](https://makerworld.com/en/models/446624) system. It doesn't
+  gridfinity label][cullenect] system. It doesn't
   change length, but it will accept any combination of screw drive specifier
   and display them in the bolt head.
+
+[cullenect]: https://makerworld.com/en/models/446624
 
 Both types of bolts will accept a head style, one of `pan`, `socket`, `round`,
 or `countersunk`. Both can be marked as `tapping` to have a pointed tip, and
