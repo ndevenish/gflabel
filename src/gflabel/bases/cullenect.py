@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import sys
 
 from build123d import (
@@ -9,6 +10,7 @@ from build123d import (
     BuildSketch,
     Edge,
     Mode,
+    Part,
     Plane,
     Polyline,
     RectangleRounded,
@@ -24,7 +26,7 @@ from build123d import (
 from . import LabelBase
 
 
-def body_v11(height_mm: float | None = None) -> LabelBase:
+def _body_v11(height_mm: float | None = None) -> tuple[Part, Vector]:
     """
     Generate a Webb-style label body
 
@@ -117,12 +119,12 @@ def body_v11(height_mm: float | None = None) -> LabelBase:
         # Finally, Chamfer these. We want 0.2/0.1 but 100% chamfers seem not to work well.
         chamfer(ext_2, length=0.1999, length2=0.1)
 
-    return LabelBase(part.part, Vector(36.4, 11))
+    return part.part, Vector(36.4, 11)
 
 
-def body_v200(
+def _body_v200(
     width_u: int, height_mm: float | None = None, ribs: bool = True
-) -> LabelBase:
+) -> tuple[Part, Vector]:
     width = 42 * width_u - 6
     height = height_mm or 11
     depth = 1.2
@@ -165,44 +167,45 @@ def body_v200(
             edges = part.edges(Select.LAST).filter_by(Axis.Z)
             fillet(edges, radius=0.5)
 
-    return LabelBase(part.part, Vector(width, height))
+    return part.part, Vector(width, height)
 
 
-def body(
-    version: str = "latest", width: int | None = None, height_mm: float | None = None
-) -> LabelBase:
+class CullenectBase(LabelBase):
     """
     Generate a Webb-style label body
 
     Origin is positioned at the center of the label, with the label
     surface at z=0.
-
-    Returns:
-        A LabelBase tuple consisting of:
-            part: The actual label body.
-            label_area: A vector describing the width, height of the usable area.
     """
-    known_versions = {"latest", "v1.1", "v2.0.0", "v2+"}
-    if version == "latest":
-        version = "v2.0.0"
-    if version not in known_versions:
-        sys.exit(
-            f"Error: Unknown cullenect version: {version}. Valid options: {', '.join(known_versions)}"
-        )
 
-    if version == "v1.1":
-        if width not in {None, 1}:
+    def __init__(self, args: argparse.Namespace):
+        version = args.version or "latest"
+        width = args.width
+        height_mm = args.height
+
+        known_versions = {"latest", "v1.1", "v2.0.0", "v2+"}
+        if version == "latest":
+            version = "v2.0.0"
+        if version not in known_versions:
             sys.exit(
-                f"Error: Gave unexpected width ({width}) for v1.1 cullenect. This version only accepts width 1 labels."
+                f"Error: Unknown cullenect version: {version}. Valid options: {', '.join(known_versions)}"
             )
 
-        assert width is None or width == 1
-        return body_v11(height_mm=height_mm)
-    elif version in {"v2.0.0", "v2+"}:
-        return body_v200(
-            width_u=width or 1, height_mm=height_mm, ribs=(version != "v2+")
-        )
+        if version == "v1.1":
+            if width not in {None, 1}:
+                sys.exit(
+                    f"Error: Gave unexpected width ({width}) for v1.1 cullenect. This version only accepts width 1 labels."
+                )
 
-    raise RuntimeError(
-        "Error: Got to end of cullenect generation without choosing a body!"
-    )
+            assert width is None or width == 1
+            self.part, self.area = _body_v11(height_mm=height_mm)
+            return
+        elif version in {"v2.0.0", "v2+"}:
+            self.part, self.area = _body_v200(
+                width_u=width or 1, height_mm=height_mm, ribs=(version != "v2+")
+            )
+            return
+
+        raise RuntimeError(
+            "Error: Got to end of cullenect generation without choosing a body!"
+        )
