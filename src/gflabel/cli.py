@@ -36,7 +36,7 @@ from build123d import (
 )
 
 from . import fragments
-from .bases import cullenect, modern, plain, pred
+from .bases import LabelBase, cullenect, modern, plain, pred
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
 from .util import IndentingRichHandler, batched
@@ -322,27 +322,23 @@ def run(argv: list[str] | None = None):
 
     options = RenderOptions.from_args(args)
     logger.debug("Got render options: %s", options)
+    body: LabelBase | None
     with BuildPart() as part:
         y = 0
-        is_embossed = args.style == LabelStyle.EMBOSSED
         if args.base == "pred":
-            body = pred.body(
-                args.width,
-                recessed=is_embossed,
-                height_mm=args.height,
-            )
+            body = pred.PredBase(args)
         elif args.base == "predbox":
-            body = pred.boxlabelbody(args.width, height_mm=args.height)
+            body = pred.PredBoxBase(args)
         elif args.base == "plain":
             if args.width < 10:
                 logger.warning(
                     f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
                 )
-            body = plain.body(args.width, height=args.height)
+            body = plain.PlainBase(args)
         elif args.base == "cullenect":
-            body = cullenect.body(args.version, width=args.width, height_mm=args.height)
+            body = cullenect.CullenectBase(args)
         elif args.base == "modern":
-            body = modern.body(args.width, height_mm=args.height)
+            body = modern.ModernBase(args)
         else:
             body = None
 
@@ -388,6 +384,7 @@ def run(argv: list[str] | None = None):
                     add(body.part)
 
             logger.debug("Extruding labels")
+            is_embossed = args.style == LabelStyle.EMBOSSED
             extrude(
                 label_sketch.sketch,
                 amount=args.depth if is_embossed else -args.depth,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
 
@@ -26,6 +27,8 @@ from build123d import (
     make_face,
     mirror,
 )
+
+from gflabel.options import LabelStyle
 
 from . import LabelBase
 
@@ -84,9 +87,7 @@ def _inner_edge(width_u: int, height_mm: float) -> Sketch:
     return sketch.sketch
 
 
-def body(
-    width_u: int, recessed: bool = True, height_mm: float | None = None
-) -> LabelBase:
+class PredBase(LabelBase):
     """
     Generate a pred-label body.
 
@@ -98,58 +99,67 @@ def body(
         recessed:
             Whether the label surface is resecced into the label (used
             for embossing) or just flat, for cutting away.
-
-    Returns:
-        A LabelBase tuple consisting of:
-            part: The actual label body.
-            label_area: A vector describing the width, height of the usable area.
     """
-    height_mm = height_mm or 11.5
 
-    with BuildPart() as part:
-        add(_outer_edge(width_u=width_u, height_mm=height_mm))
-        # Extrude the base up
-        extrude(amount=0.4, both=True)
+    def __init__(self, args: argparse.Namespace):
+        pass
+        recessed = args.style == LabelStyle.EMBOSSED
+        width_u = args.width
+        height_mm = args.height
+        height_mm = height_mm or 11.5
+
+        with BuildPart() as part:
+            add(_outer_edge(width_u=width_u, height_mm=height_mm))
+            # Extrude the base up
+            extrude(amount=0.4, both=True)
+
+            if recessed:
+                add(_inner_edge(width_u=width_u, height_mm=height_mm))
+                # Cut the indent out of the top face
+                extrude(amount=0.4, mode=Mode.SUBTRACT)
+
+            # 0.2 mm fillet all top edges
+            fillet_edges = [
+                *part.edges().group_by(Axis.Z)[-1],
+                *part.edges().group_by(Axis.Z)[0],
+            ]
+            fillet(fillet_edges, radius=0.2)
+
+        self.area = Vector(width_u * 42 - 4.2 - 5.5, height_mm - 1)
 
         if recessed:
-            add(_inner_edge(width_u=width_u, height_mm=height_mm))
-            # Cut the indent out of the top face
-            extrude(amount=0.4, mode=Mode.SUBTRACT)
-
-        # 0.2 mm fillet all top edges
-        fillet_edges = [
-            *part.edges().group_by(Axis.Z)[-1],
-            *part.edges().group_by(Axis.Z)[0],
-        ]
-        fillet(fillet_edges, radius=0.2)
-
-    area = Vector(width_u * 42 - 4.2 - 5.5, height_mm - 1)
-    if recessed:
-        return LabelBase(part.part, area)
-
-    # We want the sketch at z=0 to cut in
-    return LabelBase(part.part.locate(Location((0, 0, -0.4))), area)
+            self.part = part.part
+        else:
+            # We want the sketch at z=0 to cut in
+            self.part = part.part.locate(Location((0, 0, -0.4)))
 
 
-def boxlabelbody(width_u: int, height_mm: float | None = None) -> LabelBase:
-    if width_u not in {4, 5, 6, 7}:
-        logger.error("Pred box label dimensions only known for 4u, 5u, 6u and 7u boxes")
-        sys.exit(1)
-    r_edge = 3.5
-    depth = 0.85
-    chamfer_d = 0.2
-    height = height_mm or 24.5
-    width = {
-        4: 25.5,
-        5: 67.5,
-        6: 82,
-        7: 82,
-    }[width_u]
-    with BuildPart() as part:
-        with BuildSketch() as sketch:
-            RectangleRounded(width, height, r_edge)
-        extrude(sketch.sketch, -depth)
+class PredBoxBase(LabelBase):
+    def __init__(self, args: argparse.Namespace):
+        width_u = args.width
+        height_mm = args.height
 
-        chamfer(part.faces().filter_by(Plane.XY).edges(), chamfer_d)
+        if width_u not in {4, 5, 6, 7}:
+            logger.error(
+                "Pred box label dimensions only known for 4u, 5u, 6u and 7u boxes"
+            )
+            sys.exit(1)
+        r_edge = 3.5
+        depth = 0.85
+        chamfer_d = 0.2
+        height = height_mm or 24.5
+        width = {
+            4: 25.5,
+            5: 67.5,
+            6: 82,
+            7: 82,
+        }[width_u]
+        with BuildPart() as part:
+            with BuildSketch() as sketch:
+                RectangleRounded(width, height, r_edge)
+            extrude(sketch.sketch, -depth)
 
-    return LabelBase(part.part, Vector(width - chamfer_d * 2, height - chamfer_d * 2))
+            chamfer(part.faces().filter_by(Plane.XY).edges(), chamfer_d)
+
+        self.part = part.part
+        self.area = Vector(width - chamfer_d * 2, height - chamfer_d * 2)
