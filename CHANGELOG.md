@@ -1,5 +1,8 @@
 # GFLabel 0.2.dev
 
+- All labels can have their height altered with `--height`. Please be
+  aware that this will likely make them incompatible with the label
+  standard, so only use this if you intend to diverge from the standard.
 - The "webb" base type has been renamed to "cullenect", to reflect the
   label system being renamed. "webb" will still work, but usage is
   deprecated. The fragment `{webbolt}` has been renamed to

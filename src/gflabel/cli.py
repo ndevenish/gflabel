@@ -41,6 +41,9 @@ from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
 from .util import IndentingRichHandler, batched
 
+DEFAULT_HEIGHT = 12  # Default height when not otherwise specifying one
+
+
 logger = logging.getLogger(__name__)
 
 if "--vscode" in sys.argv:
@@ -155,9 +158,9 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--height",
-        help="Label height, in mm. Ignored for standardised label bases.",
+        help="Label height, in mm. For bases with standard heights, this will overwrite the height, diverging from the standard.",
         metavar="HEIGHT",
-        default=12,
+        default=None,
         type=float,
     )
     parser.add_argument(
@@ -298,6 +301,13 @@ def run(argv: list[str] | None = None):
         else:
             sys.exit(f"Error: Must specify width for label base '{args.base}'.")
 
+    # We want to be able to override other bases but still have the
+    # default for bases that don't have a preferred height
+    if not args.height and args.base in {"none", "plain"}:
+        args.height = DEFAULT_HEIGHT
+    if not args.height and args.base in {"none", "plain"}:
+        sys.exit("Error: Must specify --height for 'none' or 'plain' bases")
+
     if not args.margin:
         if args.base == "cullenect":
             args.margin = 0
@@ -319,19 +329,20 @@ def run(argv: list[str] | None = None):
             body = pred.body(
                 args.width,
                 recessed=is_embossed,
+                height_mm=args.height,
             )
         elif args.base == "predbox":
-            body = pred.boxlabelbody(args.width)
+            body = pred.boxlabelbody(args.width, height_mm=args.height)
         elif args.base == "plain":
             if args.width < 10:
                 logger.warning(
                     f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
                 )
-            body = plain.body(args.width, args.height)
+            body = plain.body(args.width, height=args.height)
         elif args.base == "cullenect":
-            body = cullenect.body(args.version, args.width)
+            body = cullenect.body(args.version, width=args.width, height_mm=args.height)
         elif args.base == "modern":
-            body = modern.body(args.width)
+            body = modern.body(args.width, height_mm=args.height)
         else:
             body = None
 

@@ -32,7 +32,7 @@ from build123d import (
 from . import LabelBase
 
 
-def body(width: int) -> LabelBase:
+def body(width: int, height_mm: float | None = None) -> LabelBase:
     """
     Generate a Modern-Gridfinity-Case label body
 
@@ -62,7 +62,7 @@ def body(width: int) -> LabelBase:
         sys.exit(f"Error: Do not know how wide to create 'modern' label for {width} u")
 
     W = KNOWN_WIDTHS[width] - EXTRA_WIDTH_TOL
-    H = 22.117157  # I cannot work out the basis for this value
+    H = height_mm or 22.117157  # I cannot work out the basis for this value
     depth = 2.2
 
     # Label constructed by angled extrusion of inner sketch

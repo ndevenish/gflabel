@@ -24,7 +24,7 @@ from build123d import (
 from . import LabelBase
 
 
-def body_v11() -> LabelBase:
+def body_v11(height_mm: float | None = None) -> LabelBase:
     """
     Generate a Webb-style label body
 
@@ -37,7 +37,7 @@ def body_v11() -> LabelBase:
             label_area: A vector describing the width, height of the usable area.
     """
     width = 36.4
-    height = 11
+    height = height_mm or 11.0
     depth = 1
     with BuildPart() as part:
         with BuildSketch():
@@ -120,9 +120,9 @@ def body_v11() -> LabelBase:
     return LabelBase(part.part, Vector(36.4, 11))
 
 
-def body_v200(width_u: int) -> LabelBase:
+def body_v200(width_u: int, height_mm: float | None = None) -> LabelBase:
     width = 42 * width_u - 6
-    height = 11
+    height = height_mm or 11
     depth = 1.2
     with BuildPart() as part:
         # Label body
@@ -166,7 +166,9 @@ def body_v200(width_u: int) -> LabelBase:
     return LabelBase(part.part, Vector(width, height))
 
 
-def body(version: str = "latest", width: int | None = None) -> LabelBase:
+def body(
+    version: str = "latest", width: int | None = None, height_mm: float | None = None
+) -> LabelBase:
     """
     Generate a Webb-style label body
 
@@ -193,9 +195,9 @@ def body(version: str = "latest", width: int | None = None) -> LabelBase:
             )
 
         assert width is None or width == 1
-        return body_v11()
+        return body_v11(height_mm=height_mm)
     elif version == "v2.0.0":
-        return body_v200(width or 1)
+        return body_v200(width_u=width or 1, height_mm=height_mm)
 
     raise RuntimeError(
         "Error: Got to end of cullenect generation without choosing a body!"
