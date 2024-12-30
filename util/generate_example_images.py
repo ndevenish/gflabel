@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import argparse
 import glob
+import os
 import shlex
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import gflabel.fragments as fragments
 
@@ -20,6 +22,12 @@ parser = argparse.ArgumentParser(description="Generate example images for GFlabe
 
 EXAMPLES = ["fragment", "bolt", "drives", "symbols", "columns"]
 parser.add_argument("--vscode", help="Run in OCP_vscode mode", action="store_true")
+parser.add_argument(
+    "output_dir",
+    type=Path,
+    help="Path to write output images to.",
+    metavar="OUTPUT_DIR",
+)
 
 for kind in EXAMPLES:
     parser.add_argument(
@@ -28,6 +36,8 @@ for kind in EXAMPLES:
 
 args = parser.parse_args()
 vscode = ["--vscode"] if args.vscode else []
+# Move to the output directory
+os.chdir(args.output_dir)
 
 if all(not x for x in [getattr(args, name) for name in EXAMPLES]):
     for name in EXAMPLES:
