@@ -290,7 +290,7 @@ def run(argv: list[str] | None = None):
 
     # If running in VSCode mode, then we can hardcode a label here
     if not args.labels:
-        args.labels = ["{webbolt(pozi)}{...}M3×20"]
+        args.labels = ["{cullbolt(pozi)}{...}M3×20"]
 
     if not args.width:
         if args.base in {"pred", "cullenect"}:

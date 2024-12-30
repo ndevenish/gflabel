@@ -104,7 +104,7 @@ gflabel pred "{head(+)} {bolt(50,slotted,round)}\nM3×50"
 
 And multiple label styles/symbol styles/fonts can be selected:
 ```
-gflabel cullenect --font=Arial "M3×20{...}{webbolt(+)}"
+gflabel cullenect --font=Arial "M3×20{...}{cullbolt(+)}"
 ```
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_webb.png)
 
@@ -266,7 +266,7 @@ A list of all the fragments currently recognised:
 | threaded_insert   | Representation of a threaded insert.                              |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
 | washer            | Circular washer with a circular hole.                             |
-| webbolt           | Alternate bolt representation incorporating screw drive, with fixed length. |
+| cullbolt          | Alternate bolt representation incorporating screw drive, with fixed length, as used by the [Cullenect][cullenect] system. |
 | `\|` (pipe)       | Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment. |
 
 A basic set of examples showing the usage of some of these:
@@ -295,9 +295,11 @@ There are two classes of bolt/screw representation:
   on the top of the head, and `flanged` in order to render a washer-style
   flange at the bottom of the active head.
 - `webb` corresponding to the bolt style included with [Cullen J Webb's swappable
-  gridfinity label](https://makerworld.com/en/models/446624) system. It doesn't
+  gridfinity label][cullenect] system. It doesn't
   change length, but it will accept any combination of screw drive specifier
   and display them in the bolt head.
+
+[cullenect]: https://makerworld.com/en/models/446624
 
 Both types of bolts will accept a head style, one of `pan`, `socket`, `round`,
 or `countersunk`. Both can be marked as `tapping` to have a pointed tip, and

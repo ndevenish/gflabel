@@ -657,7 +657,9 @@ class BoltFragment(BoltBase):
 
 
 @fragment("webbolt")
-class WebbBoltFragment(BoltBase):
+@fragment("cullbolt")
+@fragment("cullenectbolt")
+class CullenectBoltFragment(BoltBase):
     """
     Alternate bolt representation incorporating screw drive, with fixed length.
     """
