@@ -7,9 +7,10 @@ license = "BSD-3-Clause"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
-build123d = ">=0.7.0"
+python = "^3.10,<3.13"
+build123d = ">=0.8.0"
 rich = "^13.7.1"
+pint = "^0.24.4"
 
 [tool.poetry.scripts]
 gflabel = "gflabel.cli:run"
