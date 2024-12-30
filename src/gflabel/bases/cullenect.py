@@ -163,7 +163,7 @@ def body_v200(width_u: int) -> LabelBase:
             edges = part.edges(Select.LAST).filter_by(Axis.Z)
             fillet(edges, radius=0.5)
 
-    return LabelBase(part.part, Vector(36.4, 11))
+    return LabelBase(part.part, Vector(width, height))
 
 
 def body(version: str = "latest", width: int | None = None) -> LabelBase:
