@@ -1,5 +1,6 @@
 # GFLabel 0.2.dev
 
+- Tweaked design of threaded insert fragment to look more like a threaded insert.
 - All labels can have their height altered with `--height`. Please be
   aware that this will likely make them incompatible with the label
   standard, so only use this if you intend to diverge from the standard.
