@@ -5,7 +5,9 @@ import logging
 import sys
 
 from build123d import (
+    Align,
     Axis,
+    Box,
     BuildLine,
     BuildPart,
     BuildSketch,
@@ -103,6 +105,7 @@ class PredBase(LabelBase):
 
     def __init__(self, args: argparse.Namespace):
         pass
+
         recessed = args.style == LabelStyle.EMBOSSED
         width_u = args.width
         height_mm = args.height
@@ -118,12 +121,30 @@ class PredBase(LabelBase):
                 # Cut the indent out of the top face
                 extrude(amount=0.4, mode=Mode.SUBTRACT)
 
+            # Add a tolerance cut to the top
+            thin_edges = True
+            if thin_edges:
+                _total_w = width_u * 42 - 4.2
+                with Locations(
+                    [
+                        (-_total_w / 2 + 0.5, 0, 0.4),
+                        (_total_w / 2 - 0.5, 0, 0.4),
+                    ]
+                ):
+                    Box(
+                        1,
+                        2.85 * 2,
+                        0.2,
+                        align=(Align.CENTER, Align.CENTER, Align.MAX),
+                        mode=Mode.SUBTRACT,
+                    )
+
             # 0.2 mm fillet all top edges
             fillet_edges = [
                 *part.edges().group_by(Axis.Z)[-1],
                 *part.edges().group_by(Axis.Z)[0],
             ]
-            fillet(fillet_edges, radius=0.2)
+            fillet(fillet_edges, radius=0.19999 if thin_edges else 0.2)
 
         self.area = Vector(width_u * 42 - 4.2 - 5.5, height_mm - 1)
 
