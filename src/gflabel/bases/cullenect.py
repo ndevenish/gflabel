@@ -120,7 +120,9 @@ def body_v11(height_mm: float | None = None) -> LabelBase:
     return LabelBase(part.part, Vector(36.4, 11))
 
 
-def body_v200(width_u: int, height_mm: float | None = None) -> LabelBase:
+def body_v200(
+    width_u: int, height_mm: float | None = None, ribs: bool = True
+) -> LabelBase:
     width = 42 * width_u - 6
     height = height_mm or 11
     depth = 1.2
@@ -139,7 +141,7 @@ def body_v200(width_u: int, height_mm: float | None = None) -> LabelBase:
         extrude(amount=-(depth - 0.6), mode=Mode.SUBTRACT)
 
         # v1 Cuttings, but only for width = 1 labels
-        if width_u == 1:
+        if width_u == 1 and ribs:
             with BuildSketch(Plane.XZ) as _sketch:
                 for x in [-12.133, 0, 12.133]:
                     with BuildLine() as _line:
@@ -180,7 +182,7 @@ def body(
             part: The actual label body.
             label_area: A vector describing the width, height of the usable area.
     """
-    known_versions = {"latest", "v1.1", "v2.0.0"}
+    known_versions = {"latest", "v1.1", "v2.0.0", "v2+"}
     if version == "latest":
         version = "v2.0.0"
     if version not in known_versions:
@@ -196,8 +198,10 @@ def body(
 
         assert width is None or width == 1
         return body_v11(height_mm=height_mm)
-    elif version == "v2.0.0":
-        return body_v200(width_u=width or 1, height_mm=height_mm)
+    elif version in {"v2.0.0", "v2+"}:
+        return body_v200(
+            width_u=width or 1, height_mm=height_mm, ribs=(version != "v2+")
+        )
 
     raise RuntimeError(
         "Error: Got to end of cullenect generation without choosing a body!"

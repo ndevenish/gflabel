@@ -8,7 +8,9 @@
   deprecated. The fragment `{webbolt}` has been renamed to
   `{cullbolt}`/`{cullenectbolt}` accordingly, but the old name will also still
   work.
-- Updated Cullenect labels to match the V2 geometry.
+- Updated Cullenect labels to match the V2 geometry. 1u labels by default
+  have the v1-style ribs, but these can be turned off by specifying
+  `--version=v2+`.
 - Added new base: `modern`, to generate labels for [Modern Gridfinity Base][modern].
 - Label base type must now always be specified. You can pass `--pred` to
   get the old default kind. You can also specify partial/incomplete
