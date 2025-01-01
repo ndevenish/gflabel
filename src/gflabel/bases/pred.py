@@ -32,7 +32,7 @@ from . import LabelBase
 logger = logging.getLogger(__name__)
 
 
-def _outer_edge(width_u: int) -> Sketch:
+def _outer_edge(width_u: int, height_mm: float) -> Sketch:
     """Generate the outer edge profile of a pred-label"""
     # Width of straight bit in label is:
     #   Bin width (u * 42)
@@ -49,8 +49,8 @@ def _outer_edge(width_u: int) -> Sketch:
             FilletPolyline(
                 [
                     l1 @ 1,
-                    (x - 0.9, 5.75),
-                    (0, 5.75),
+                    (x - 0.9, height_mm / 2),
+                    (0, height_mm / 2),
                 ],
                 radius=0.9,
             )
@@ -65,13 +65,16 @@ def _outer_edge(width_u: int) -> Sketch:
     return sketch.sketch
 
 
-def _inner_edge(width_u: int) -> Sketch:
+def _inner_edge(width_u: int, height_mm: float) -> Sketch:
     straight_width = width_u * 42 - 4.2 - (1.9 * 2)
     x = -straight_width / 2
     with BuildSketch() as sketch:
         with BuildLine() as line:
             a1 = CenterArc((x - 0.4, 0), 1.25, 0, 90)
-            FilletPolyline([a1 @ 1, (x - 0.4, 5.25), (0, 5.25)], radius=0.4)
+            FilletPolyline(
+                [a1 @ 1, (x - 0.4, (height_mm - 1) / 2), (0, (height_mm - 1) / 2)],
+                radius=0.4,
+            )
             # Fillet the vertex between the arc and polyline
             fillet([line.vertices().sort_by_distance(a1 @ 1)[0]], radius=1)
             mirror(line.line, Plane.XZ)
@@ -81,7 +84,9 @@ def _inner_edge(width_u: int) -> Sketch:
     return sketch.sketch
 
 
-def body(width_u: int, recessed: bool = True) -> LabelBase:
+def body(
+    width_u: int, recessed: bool = True, height_mm: float | None = None
+) -> LabelBase:
     """
     Generate a pred-label body.
 
@@ -99,14 +104,15 @@ def body(width_u: int, recessed: bool = True) -> LabelBase:
             part: The actual label body.
             label_area: A vector describing the width, height of the usable area.
     """
+    height_mm = height_mm or 11.5
 
     with BuildPart() as part:
-        add(_outer_edge(width_u=width_u))
+        add(_outer_edge(width_u=width_u, height_mm=height_mm))
         # Extrude the base up
         extrude(amount=0.4, both=True)
 
         if recessed:
-            add(_inner_edge(width_u=width_u))
+            add(_inner_edge(width_u=width_u, height_mm=height_mm))
             # Cut the indent out of the top face
             extrude(amount=0.4, mode=Mode.SUBTRACT)
 
@@ -117,7 +123,7 @@ def body(width_u: int, recessed: bool = True) -> LabelBase:
         ]
         fillet(fillet_edges, radius=0.2)
 
-    area = Vector(width_u * 42 - 4.2 - 5.5, 10.5)
+    area = Vector(width_u * 42 - 4.2 - 5.5, height_mm - 1)
     if recessed:
         return LabelBase(part.part, area)
 
@@ -125,14 +131,14 @@ def body(width_u: int, recessed: bool = True) -> LabelBase:
     return LabelBase(part.part.locate(Location((0, 0, -0.4))), area)
 
 
-def boxlabelbody(width_u: int) -> LabelBase:
+def boxlabelbody(width_u: int, height_mm: float | None = None) -> LabelBase:
     if width_u not in {4, 5, 6, 7}:
         logger.error("Pred box label dimensions only known for 4u, 5u, 6u and 7u boxes")
         sys.exit(1)
     r_edge = 3.5
     depth = 0.85
     chamfer_d = 0.2
-    height = 24.5
+    height = height_mm or 24.5
     width = {
         4: 25.5,
         5: 67.5,
