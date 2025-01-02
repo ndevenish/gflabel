@@ -294,7 +294,7 @@ There are two classes of bolt/screw representation:
   bolt length. It will also accept a `slot` feature that marks a small indent
   on the top of the head, and `flanged` in order to render a washer-style
   flange at the bottom of the active head.
-- `webb` corresponding to the bolt style included with [Cullen J Webb's swappable
+- `cullbolt` corresponding to the bolt style included with [Cullen J Webb's swappable
   gridfinity label][cullenect] system. It doesn't
   change length, but it will accept any combination of screw drive specifier
   and display them in the bolt head.
