@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 
 from build123d import Part, Vector
 
+from ..util import unit_registry
+
 
 class LabelBase(ABC):
     """
@@ -13,6 +15,12 @@ class LabelBase(ABC):
 
     part: Part
     area: Vector
+
+    # The width for this base to use if none is specified
+    DEFAULT_WIDTH = None
+    # The unit to use for the user-specified width if it was dimensionless
+    DEFAULT_WIDTH_UNIT = None
+    DEFAULT_MARGIN = unit_registry.Quantity(0.2, "mm")
 
     @classmethod
     def generate_argparse(
@@ -23,6 +31,9 @@ class LabelBase(ABC):
 
     @classmethod
     def validate_arguments(cls, args: argparse.Namespace) -> bool:
+        if not args.margin:
+            args.margin = cls.DEFAULT_MARGIN
+
         return True
 
     @abstractmethod

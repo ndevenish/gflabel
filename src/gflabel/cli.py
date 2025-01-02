@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 import build123d as bd
+import pint
 import rich
 import rich.table
 
@@ -36,20 +37,22 @@ from build123d import (
 )
 
 from . import fragments
-from .bases import LabelBase, cullenect, modern, plain, pred
+from .bases import LabelBase
+from .bases.cullenect import CullenectBase
+from .bases.modern import ModernBase
+from .bases.none import NoneBase
+from .bases.plain import PlainBase
+from .bases.pred import PredBase, PredBoxBase
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
-from .util import IndentingRichHandler, batched
-
-DEFAULT_HEIGHT = 12  # Default height when not otherwise specifying one
-
+from .util import IndentingRichHandler, batched, unit_registry
 
 logger = logging.getLogger(__name__)
 
 if "--vscode" in sys.argv:
     from ocp_vscode import Camera, set_defaults, show
 
-    set_defaults(reset_camera=Camera.CENTER)
+    set_defaults(reset_camera=Camera.KEEP)
 
 
 class ListFragmentsAction(argparse.Action):
@@ -132,12 +135,31 @@ class BaseChoiceAction(argparse.Action):
         return self.option_strings[0]
 
 
+def base_name_to_subclass(name: str) -> type[LabelBase]:
+    """Get the LabelBase subclass instance from the name"""
+    bases = {
+        "cullenect": CullenectBase,
+        "modern": ModernBase,
+        "pred": PredBase,
+        "predbox": PredBoxBase,
+        "plain": PlainBase,
+        "none": NoneBase,
+        None: NoneBase,
+    }
+    if name not in bases:
+        raise ValueError(
+            f"Error: Could not find class instance for base named '{name}'"
+        )
+    return bases[name]
+
+
 def run(argv: list[str] | None = None):
     # Handle the old way of specifying base
     if any(x.startswith("--base") for x in (argv or sys.argv)):
         sys.exit(
             "Error: --base is no longer the way to specify base geometry. Please pass in as a direct argument (gflabel <BASE>)"
         )
+
     parser = ArgumentParser(description="Generate gridfinity bin labels")
     parser.add_argument(
         "base",
@@ -155,6 +177,7 @@ def run(argv: list[str] | None = None):
         "--width",
         help="Label width. If using a gridfinity standard base, then this is width in U. Otherwise, width in mm.",
         metavar="WIDTH",
+        type=pint.Quantity,
     )
     parser.add_argument(
         "--height",
@@ -280,13 +303,10 @@ def run(argv: list[str] | None = None):
 
     logger.debug(f"Args: {args}")
 
+    base_type = base_name_to_subclass(args.base)
+
     if not args.output and not args.vscode:
         args.output = ["label.step"]
-
-    # We cannot have debossed labels with no label
-    if args.base == "none" and args.style != LabelStyle.EMBOSSED:
-        logger.error("Error: Can only generate 'Embossed' style labels without a base.")
-        sys.exit(1)
 
     # We don't need to generate 3D shapes if we are only doing SVG
     is_2d = args.output and all([x.endswith(".svg") for x in args.output])
@@ -295,58 +315,43 @@ def run(argv: list[str] | None = None):
     if not args.labels:
         args.labels = ["{cullbolt(pozi)}{...}M3×20"]
 
+    # We want to set the width default before validation, so we can check it
     if not args.width:
-        if args.base in {"pred", "cullenect"}:
-            args.width = "1"
+        if base_type.DEFAULT_WIDTH:
+            args.width = base_type.DEFAULT_WIDTH
         else:
             sys.exit(f"Error: Must specify width for label base '{args.base}'.")
 
-    # We want to be able to override other bases but still have the
-    # default for bases that don't have a preferred height
-    if not args.height and args.base in {"none", "plain"}:
-        args.height = DEFAULT_HEIGHT
-    if not args.height and args.base in {"none", "plain"}:
-        sys.exit("Error: Must specify --height for 'none' or 'plain' bases")
+    assert isinstance(args.width, pint.Quantity)
 
-    if not args.margin:
-        if args.base == "cullenect":
-            args.margin = 0
-        if args.base == "predbox":
-            # This recommends a 2-3mm border
-            args.margin = 3
-        else:
-            args.margin = 0.2
-    args.width = int(args.width.rstrip("u"))
+    # If we got a dimensionless width, replace with the base default unit
+    if args.width.units == unit_registry.dimensionless:
+        args.width = pint.Quantity(args.width.magnitude, base_type.DEFAULT_WIDTH_UNIT)
+
+    if args.margin is None:
+        args.margin = base_type.DEFAULT_MARGIN
+    elif args.margin is not pint.Quantity:
+        args.margin = pint.Quantity(args.margin, unit_registry.mm)
+
+    logger.info(f"Rendering label with width: {args.width}")
+
     args.divisions = args.divisions or len(args.labels)
     args.labels = [x.replace("\\n", "\n") for x in args.labels]
 
     options = RenderOptions.from_args(args)
     logger.debug("Got render options: %s", options)
-    body: LabelBase | None
+    body: LabelBase | None = None
     with BuildPart() as part:
         y = 0
-        if args.base == "pred":
-            body = pred.PredBase(args)
-        elif args.base == "predbox":
-            body = pred.PredBoxBase(args)
-        elif args.base == "plain":
-            if args.width < 10:
-                logger.warning(
-                    f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
-                )
-            body = plain.PlainBase(args)
-        elif args.base == "cullenect":
-            body = cullenect.CullenectBase(args)
-        elif args.base == "modern":
-            body = modern.ModernBase(args)
-        else:
-            body = None
+        body = base_type(args)
 
-        if body:
+        if body.part:
             y_offset_each_label = body.part.bounding_box().size.Y + args.label_gap
             label_area = body.area
         else:
+            # Only occurs if label type has no body e.g. "None"
             y_offset_each_label = args.height + args.label_gap
+
             label_area = Vector(X=args.width, Y=args.height)
 
         body_locations = []
@@ -378,7 +383,7 @@ def run(argv: list[str] | None = None):
 
         if not is_2d:
             # Create all of the bases
-            if body:
+            if body.part:
                 logger.debug("Creating label bodies")
                 with Locations(body_locations):
                     add(body.part)

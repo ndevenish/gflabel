@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+import pint
 from build123d import (
     Axis,
     BuildLine,
@@ -23,6 +24,7 @@ from build123d import (
     make_face,
 )
 
+from ..util import unit_registry
 from . import LabelBase
 
 
@@ -123,27 +125,36 @@ def _body_v11(height_mm: float | None = None) -> tuple[Part, Vector]:
 
 
 def _body_v200(
-    width_u: int, height_mm: float | None = None, ribs: bool = True
+    width: pint.quantity, height_mm: float | None = None, ribs: bool = True
 ) -> tuple[Part, Vector]:
-    width = 42 * width_u - 6
+    is_1u = False
+    if width.check(unit_registry.u):
+        if width.magnitude == 1:
+            is_1u = True
+        width_mm = (width * unit_registry.Quantity("42mm/u").to("mm")).magnitude - 6
+    else:
+        width_mm = width.to("mm").magnitude
     height = height_mm or 11
     depth = 1.2
     with BuildPart() as part:
         # Label body
         with BuildSketch():
-            RectangleRounded(width=width, height=height, radius=0.5)
+            RectangleRounded(width=width_mm, height=height, radius=0.5)
         extrude(amount=-depth)
 
         # Label edge inset
         with BuildSketch(Plane.XY.offset(-0.4)):
-            RectangleRounded(width=width, height=height, radius=0.5)
+            RectangleRounded(width=width_mm, height=height, radius=0.5)
             RectangleRounded(
-                width=width - 0.4, height=height - 0.4, radius=0.3, mode=Mode.SUBTRACT
+                width=width_mm - 0.4,
+                height=height - 0.4,
+                radius=0.3,
+                mode=Mode.SUBTRACT,
             )
         extrude(amount=-(depth - 0.6), mode=Mode.SUBTRACT)
 
         # v1 Cuttings, but only for width = 1 labels
-        if width_u == 1 and ribs:
+        if is_1u and ribs:
             with BuildSketch(Plane.XZ) as _sketch:
                 for x in [-12.133, 0, 12.133]:
                     with BuildLine() as _line:
@@ -167,7 +178,7 @@ def _body_v200(
             edges = part.edges(Select.LAST).filter_by(Axis.Z)
             fillet(edges, radius=0.5)
 
-    return part.part, Vector(width, height)
+    return part.part, Vector(width_mm, height)
 
 
 class CullenectBase(LabelBase):
@@ -177,6 +188,10 @@ class CullenectBase(LabelBase):
     Origin is positioned at the center of the label, with the label
     surface at z=0.
     """
+
+    DEFAULT_WIDTH = pint.Quantity("1u")
+    DEFAULT_WIDTH_UNIT = unit_registry.u
+    DEFAULT_MARGIN = unit_registry.Quantity(0, "mm")
 
     def __init__(self, args: argparse.Namespace):
         version = args.version or "latest"
@@ -192,6 +207,9 @@ class CullenectBase(LabelBase):
             )
 
         if version == "v1.1":
+            if width.units == unit_registry.u:
+                sys.exit("Error: Cullenect v1.1 can only generate width=1u labels")
+
             if width not in {None, 1}:
                 sys.exit(
                     f"Error: Gave unexpected width ({width}) for v1.1 cullenect. This version only accepts width 1 labels."
@@ -201,9 +219,12 @@ class CullenectBase(LabelBase):
             self.part, self.area = _body_v11(height_mm=height_mm)
             return
         elif version in {"v2.0.0", "v2+"}:
-            self.part, self.area = _body_v200(
-                width_u=width or 1, height_mm=height_mm, ribs=(version != "v2+")
+            ret = _body_v200(
+                width=width or pint.Quantity("1u"),
+                height_mm=height_mm,
+                ribs=(version != "v2+"),
             )
+            self.part, self.area = ret
             return
 
         raise RuntimeError(

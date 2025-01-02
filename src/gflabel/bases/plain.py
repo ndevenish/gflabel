@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import logging
+import sys
 
 from build123d import Axis, BuildPart, BuildSketch, Rectangle, Vector, extrude, fillet
 
+from ..util import unit_registry
 from . import LabelBase
+
+logger = logging.getLogger(__name__)
 
 
 class PlainBase(LabelBase):
@@ -22,8 +27,23 @@ class PlainBase(LabelBase):
 
     """
 
+    DEFAULT_WIDTH = None
+    DEFAULT_WIDTH_UNIT = unit_registry.mm
+
+    @classmethod
+    def validate_arguments(cls, args):
+        if args.width < 10:
+            logger.warning(
+                f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
+            )
+        if not args.height:
+            args.height = 15
+        return super().validate_arguments(args)
+
     def __init__(self, args: argparse.Namespace):
-        width_mm = args.width
+        if args.width.units == unit_registry.u:
+            sys.exit("Error: Cannot specify width in units for plain base")
+        width_mm = args.width.to("mm").magnitude
         height = args.height
         with BuildPart() as part:
             with BuildSketch() as _sketch:

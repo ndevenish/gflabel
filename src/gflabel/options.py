@@ -8,6 +8,7 @@ import logging
 from enum import Enum, auto
 from typing import Iterator, NamedTuple
 
+import pint
 from build123d import FontStyle, Path
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,8 @@ class FontOptions(NamedTuple):
 
     def get_allowed_height(self, requested_height: float) -> float:
         """Calculate the font height, accounting for option specifications"""
+        if not requested_height:
+            raise ValueError("Requested zero height")
         if self.font_height_exact:
             return self.font_height_mm or requested_height
         else:
@@ -94,8 +97,18 @@ class RenderOptions(NamedTuple):
         font_style = [
             x for x in FontStyle if x.name.lower() == args.font_style.lower()
         ][0]
+        margin_mm = args.margin
+        if isinstance(args.margin, pint.Quantity):
+            if not args.margin.check("[length]"):
+                raise ValueError(
+                    "Got non-length dimension pint quantity for args.margin"
+                )
+            margin_mm = args.margin.to("mm").magnitude
+        assert (
+            margin_mm is not None
+        ), "Margin should have been set either by user or defaults"
         return cls(
-            margin_mm=args.margin,
+            margin_mm=margin_mm,
             font=FontOptions(
                 font=args.font,
                 font_style=font_style,

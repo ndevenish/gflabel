@@ -6,7 +6,24 @@ from collections.abc import Mapping
 from itertools import islice
 from typing import Any, Callable, Sequence
 
+import pint
 from rich.logging import RichHandler
+
+unit_registry = pint.UnitRegistry()
+unit_registry.define("u = []")
+# Add a custom transformation to this registry
+ctx = pint.Context("u")
+ctx.add_transformation(
+    "u",
+    "[length]",
+    lambda ureg, x, fn: fn(x),
+    # * ureg.Quantity(fn(x) / ureg.Quantity("u")),
+)
+unit_registry.add_context(ctx)
+
+# Use this by default
+# unit_registry.enable_contexts("u")
+pint.set_application_registry(unit_registry)
 
 
 # Taken from Python 3.12 documentation.

@@ -231,6 +231,8 @@ class TextFragment(Fragment):
         self.text = text
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        if not height:
+            raise ValueError("Trying to render zero-height text fragment")
         with BuildSketch() as sketch:
             with options.font.font_options() as f:
                 print(f"Using {f}")
