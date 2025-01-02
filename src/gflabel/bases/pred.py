@@ -118,8 +118,9 @@ class PredBase(LabelBase):
             width_mm = args.width.to("mm").magnitude
 
         recessed = args.style == LabelStyle.EMBOSSED
-        height_mm = args.height
-        height_mm = height_mm or 11.5
+        height_mm = 11.5
+        if args.height is not None:
+            height_mm = args.height.to("mm").magnitude
 
         with BuildPart() as part:
             add(_outer_edge(width_mm=width_mm, height_mm=height_mm))
@@ -153,8 +154,6 @@ class PredBoxBase(LabelBase):
     DEFAULT_MARGIN = unit_registry.Quantity(3, "mm")
 
     def __init__(self, args: argparse.Namespace):
-        height_mm = args.height
-
         def _convert_u_to_mm(u: pint.Quantity):
             if args.width.magnitude not in {4, 5, 6, 7}:
                 logger.error(
@@ -177,14 +176,16 @@ class PredBoxBase(LabelBase):
         r_edge = 3.5
         depth = 0.85
         chamfer_d = 0.2
-        height = height_mm or 24.5
+        height_mm = 24.5
+        if args.height is not None:
+            height_mm = args.height.to("mm").magnitude
 
         with BuildPart() as part:
             with BuildSketch() as sketch:
-                RectangleRounded(width_mm, height, r_edge)
+                RectangleRounded(width_mm, height_mm, r_edge)
             extrude(sketch.sketch, -depth)
 
             chamfer(part.faces().filter_by(Plane.XY).edges(), chamfer_d)
 
         self.part = part.part
-        self.area = Vector(width_mm - chamfer_d * 2, height - chamfer_d * 2)
+        self.area = Vector(width_mm - chamfer_d * 2, height_mm - chamfer_d * 2)

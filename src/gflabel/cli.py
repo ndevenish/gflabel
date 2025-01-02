@@ -175,16 +175,16 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "-w",
         "--width",
-        help="Label width. If using a gridfinity standard base, then this is width in U. Otherwise, width in mm.",
+        help="Label width. If using a gridfinity standard base, then this is width in U. Otherwise, width in mm. Specify units e.g. '3mm' to override the default behaviour.",
         metavar="WIDTH",
         type=pint.Quantity,
     )
     parser.add_argument(
         "--height",
-        help="Label height, in mm. For bases with standard heights, this will overwrite the height, diverging from the standard.",
+        help="Label height, by default in mm. For bases with standard heights, this will overwrite the height, diverging from the standard.",
         metavar="HEIGHT",
         default=None,
-        type=float,
+        type=pint.Quantity,
     )
     parser.add_argument(
         "--depth",
@@ -327,6 +327,9 @@ def run(argv: list[str] | None = None):
     # If we got a dimensionless width, replace with the base default unit
     if args.width.units == unit_registry.dimensionless:
         args.width = pint.Quantity(args.width.magnitude, base_type.DEFAULT_WIDTH_UNIT)
+    # Height with unspecified units is mm
+    if args.height and args.height.units == unit_registry.dimensionless:
+        args.height = pint.Quantity(args.height.magnitude, unit_registry.mm)
 
     if args.margin is None:
         args.margin = base_type.DEFAULT_MARGIN

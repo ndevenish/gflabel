@@ -37,17 +37,17 @@ class PlainBase(LabelBase):
                 f"Warning: Small width ({args.width}) for plain base. Did you specify in mm?"
             )
         if not args.height:
-            args.height = 15
+            args.height = unit_registry.Quantity(15, unit_registry.mm)
         return super().validate_arguments(args)
 
     def __init__(self, args: argparse.Namespace):
         if args.width.units == unit_registry.u:
             sys.exit("Error: Cannot specify width in units for plain base")
         width_mm = args.width.to("mm").magnitude
-        height = args.height
+        height_mm = args.height.to("mm").magnitude
         with BuildPart() as part:
             with BuildSketch() as _sketch:
-                Rectangle(width_mm, height=height)
+                Rectangle(width_mm, height=height_mm)
             # Extrude the base up
             extrude(amount=-0.8)
 
@@ -59,4 +59,4 @@ class PlainBase(LabelBase):
             fillet(fillet_edges, radius=0.2)
 
         self.part = part.part
-        self.area = Vector(width_mm, height)
+        self.area = Vector(width_mm, height_mm)

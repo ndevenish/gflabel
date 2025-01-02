@@ -74,7 +74,10 @@ class ModernBase(LabelBase):
 
         with unit_registry.context("u", fn=_convert_u_to_mm):
             W_mm = args.width.to("mm").magnitude
-        H_mm = args.height or 22.117157  # I cannot work out the basis for this value
+        H_mm = 22.117157  # I cannot work out the basis for this value
+        if args.height is not None:
+            H_mm = args.height.to("mm").magnitude
+
         depth = 2.2
 
         # Label constructed by angled extrusion of inner sketch

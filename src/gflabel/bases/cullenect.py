@@ -196,7 +196,7 @@ class CullenectBase(LabelBase):
     def __init__(self, args: argparse.Namespace):
         version = args.version or "latest"
         width = args.width
-        height_mm = args.height
+        height_mm = args.height.to("mm").magnitude if args.height is not None else None
 
         known_versions = {"latest", "v1.1", "v2.0.0", "v2+"}
         if version == "latest":

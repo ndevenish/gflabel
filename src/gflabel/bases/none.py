@@ -35,6 +35,6 @@ class NoneBase(LabelBase):
                 "Error: Can only generate 'Embossed' style labels without a base."
             )
             sys.exit(1)
-        if not args.height:
-            args.height = 15
+        if args.height is None:
+            args.height = unit_registry.Quantity(15, "mm")
         return super().validate_arguments(args)
