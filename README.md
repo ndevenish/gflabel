@@ -11,10 +11,12 @@ generate-smallish-printable-label uses. Leverages [build123d][build123d].
 
 ## State
 
-This is an early version of a hobby project. Thus:
+This is a hobby project. Thus:
 
+- Updates and attention to this project can come intermittently (although I
+  will try to respond to outright bugs).
 - It has a lot of rough edges, not the least that the output is messy and
-  not very useful. But functionality not used much might not work well.
+  snot very useful. And functionality not used much might not work well.
 - It sometimes needs manual encouragement to make labels looking good or
   consistent.
 - A habit of sometimes crashing OCP when geometry is a little bit odd.
@@ -36,10 +38,6 @@ This should work on most modern platforms, but with the following caveats:
 - Linux wheels for the dependency cadquery-ocp are only available on
   resonably modern (e.g. Ubuntu 22.4+) linux distributions, so you may have to
   go to conda to install on an older machine.
-- For specifically macOS arm64, the underlying cadquery-ocp library is not
-  available as a wheel through pypi. In this case, you will have to set up the
-  build123d environment manually. build123d has [some notes][install_build123d]
-  on resolving this conflict.
 
 [install_build123d]: https://build123d.readthedocs.io/en/latest/installation.html#special-notes-on-apple-silicon-installs
 
