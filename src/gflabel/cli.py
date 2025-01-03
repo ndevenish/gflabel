@@ -353,9 +353,13 @@ def run(argv: list[str] | None = None):
             label_area = body.area
         else:
             # Only occurs if label type has no body e.g. "None"
-            y_offset_each_label = args.height + args.label_gap
+            if args.height is None:
+                args.height = pint.Quantity("12mm")
+            y_offset_each_label = args.height.to("mm").magnitude + args.label_gap
 
-            label_area = Vector(X=args.width, Y=args.height)
+            label_area = Vector(
+                X=args.width.to("mm").magnitude, Y=args.height.to("mm").magnitude
+            )
 
         body_locations = []
         with BuildSketch(mode=Mode.PRIVATE) as label_sketch:
