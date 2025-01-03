@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gflabel"
-version = "0.1.7"
+version = "0.2.0"
 description = ""
 authors = ["Nicholas Devenish <ndevenish@gmail.com>"]
 license = "BSD-3-Clause"
@@ -29,7 +29,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.bumpversion]
-current_version = "0.1.7"
+current_version = "0.2.0"
 tag = true
 tag_name = "v{new_version}"
 commit = true

@@ -1,13 +1,10 @@
-# GFLabel 0.2.dev
+# GFLabel 0.2.0 (2025-01-03)
 
-- All labels can have their width altered by passing units via `--width`. e.g.
-  `gflabel cullenect --width 80mm` will make an exactly 80mm wide label, but
-  `gflabel cullenect -w 2` or `-w 2u` will continue generating labels that
-  match the standard.
-- Tweaked design of threaded insert fragment to look more like a threaded insert.
-- All labels can have their height altered with `--height`. Please be
-  aware that this will likely make them incompatible with the label
-  standard, so only use this if you intend to diverge from the standard.
+- Label base type must now always be specified. You can pass `pred` to
+  get the old default kind. You can also specify partial/incomplete
+  names, as long as it is unambuguous (e.g. `gflabel cull` will select
+  `cullenect` labels).
+- Added new base: `modern`, to generate labels for [Modern Gridfinity Base][modern].
 - The "webb" base type has been renamed to "cullenect", to reflect the
   label system being renamed. "webb" will still work, but usage is
   deprecated. The fragment `{webbolt}` has been renamed to
@@ -16,11 +13,14 @@
 - Updated Cullenect labels to match the V2 geometry. 1u labels by default
   have the v1-style ribs, but these can be turned off by specifying
   `--version=v2+`.
-- Added new base: `modern`, to generate labels for [Modern Gridfinity Base][modern].
-- Label base type must now always be specified. You can pass `--pred` to
-  get the old default kind. You can also specify partial/incomplete
-  names, as long as it is unambuguous (e.g. `gflabel cull` will select
-  `cullenect` labels).
+- All labels can have their height altered with `--height`. Please be
+  aware that this will likely make them incompatible with the label
+  standard, so only use this if you intend to diverge from the standard.
+- All labels can have their width altered by passing units via `--width`. e.g.
+  `gflabel cullenect --width 80mm` will make an exactly 80mm wide label, but
+  `gflabel cullenect -w 2` or `-w 2u` will continue generating labels that
+  match the standard.
+- Tweaked design of threaded insert fragment to look more like a threaded insert.
 - Added ability to specify label base version, for labels with multiple
   standards version.
 - Added alias "Robertson" for square-drive, as it is generally used in
