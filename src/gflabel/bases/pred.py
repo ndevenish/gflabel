@@ -4,6 +4,7 @@ import argparse
 import logging
 import sys
 
+import pint
 from build123d import (
     Axis,
     BuildLine,
@@ -30,18 +31,19 @@ from build123d import (
 
 from gflabel.options import LabelStyle
 
+from ..util import unit_registry
 from . import LabelBase
 
 logger = logging.getLogger(__name__)
 
 
-def _outer_edge(width_u: int, height_mm: float) -> Sketch:
+def _outer_edge(width_mm: float, height_mm: float) -> Sketch:
     """Generate the outer edge profile of a pred-label"""
     # Width of straight bit in label is:
     #   Bin width (u * 42)
     # - label margins (4.2mm)
     # - label end size (1.9mm per end)
-    straight_width = width_u * 42 - 4.2 - (1.9 * 2)
+    straight_width = width_mm - (1.9 * 2)
     with BuildSketch() as sketch:
         with BuildLine() as line:
             # Where the sketch is placed in X. 2.1 is the pred label offset
@@ -68,8 +70,8 @@ def _outer_edge(width_u: int, height_mm: float) -> Sketch:
     return sketch.sketch
 
 
-def _inner_edge(width_u: int, height_mm: float) -> Sketch:
-    straight_width = width_u * 42 - 4.2 - (1.9 * 2)
+def _inner_edge(width_mm: float, height_mm: float) -> Sketch:
+    straight_width = width_mm - (1.9 * 2)
     x = -straight_width / 2
     with BuildSketch() as sketch:
         with BuildLine() as line:
@@ -101,20 +103,32 @@ class PredBase(LabelBase):
             for embossing) or just flat, for cutting away.
     """
 
+    DEFAULT_WIDTH = pint.Quantity("1u")
+    DEFAULT_WIDTH_UNIT = unit_registry.u
+
     def __init__(self, args: argparse.Namespace):
-        pass
+        assert args.width.check(unit_registry.u) or args.width.check("[length]")
+
+        def _convert_u_to_mm(u):
+            return u * unit_registry.Quantity("42mm/u") - unit_registry.Quantity(
+                "4.2mm"
+            )
+
+        with unit_registry.context("u", fn=_convert_u_to_mm):
+            width_mm = args.width.to("mm").magnitude
+
         recessed = args.style == LabelStyle.EMBOSSED
-        width_u = args.width
-        height_mm = args.height
-        height_mm = height_mm or 11.5
+        height_mm = 11.5
+        if args.height is not None:
+            height_mm = args.height.to("mm").magnitude
 
         with BuildPart() as part:
-            add(_outer_edge(width_u=width_u, height_mm=height_mm))
+            add(_outer_edge(width_mm=width_mm, height_mm=height_mm))
             # Extrude the base up
             extrude(amount=0.4, both=True)
 
             if recessed:
-                add(_inner_edge(width_u=width_u, height_mm=height_mm))
+                add(_inner_edge(width_mm=width_mm, height_mm=height_mm))
                 # Cut the indent out of the top face
                 extrude(amount=0.4, mode=Mode.SUBTRACT)
 
@@ -125,7 +139,7 @@ class PredBase(LabelBase):
             ]
             fillet(fillet_edges, radius=0.2)
 
-        self.area = Vector(width_u * 42 - 4.2 - 5.5, height_mm - 1)
+        self.area = Vector(width_mm - 5.5, height_mm - 1)
 
         if recessed:
             self.part = part.part
@@ -135,31 +149,43 @@ class PredBase(LabelBase):
 
 
 class PredBoxBase(LabelBase):
-    def __init__(self, args: argparse.Namespace):
-        width_u = args.width
-        height_mm = args.height
+    DEFAULT_WIDTH = None
+    DEFAULT_WIDTH_UNIT = unit_registry.u
+    DEFAULT_MARGIN = unit_registry.Quantity(3, "mm")
 
-        if width_u not in {4, 5, 6, 7}:
-            logger.error(
-                "Pred box label dimensions only known for 4u, 5u, 6u and 7u boxes"
+    def __init__(self, args: argparse.Namespace):
+        def _convert_u_to_mm(u: pint.Quantity):
+            if args.width.magnitude not in {4, 5, 6, 7}:
+                logger.error(
+                    "Pred box label dimensions only known for 4u, 5u, 6u and 7u boxes"
+                )
+                sys.exit(1)
+            return pint.Quantity(
+                {
+                    4: 25.5,
+                    5: 67.5,
+                    6: 82,
+                    7: 82,
+                }[u.magnitude],
+                "mm",
             )
-            sys.exit(1)
+
+        with unit_registry.context("u", fn=_convert_u_to_mm):
+            width_mm = args.width.to("mm").magnitude
+
         r_edge = 3.5
         depth = 0.85
         chamfer_d = 0.2
-        height = height_mm or 24.5
-        width = {
-            4: 25.5,
-            5: 67.5,
-            6: 82,
-            7: 82,
-        }[width_u]
+        height_mm = 24.5
+        if args.height is not None:
+            height_mm = args.height.to("mm").magnitude
+
         with BuildPart() as part:
             with BuildSketch() as sketch:
-                RectangleRounded(width, height, r_edge)
+                RectangleRounded(width_mm, height_mm, r_edge)
             extrude(sketch.sketch, -depth)
 
             chamfer(part.faces().filter_by(Plane.XY).edges(), chamfer_d)
 
         self.part = part.part
-        self.area = Vector(width - chamfer_d * 2, height - chamfer_d * 2)
+        self.area = Vector(width_mm - chamfer_d * 2, height_mm - chamfer_d * 2)
