@@ -58,6 +58,8 @@ class ModernBase(LabelBase):
         LABEL_DEPTH = args.label_depth.to("mm").magnitude if args.label_depth else 2.2
 
         KNOWN_WIDTHS = {3: 31.8, 4: 50.8, 5: 75.8, 6: 115.8, 7: 140.800, 8: 140.800}
+        # The main body (e.g. the angled parts) has this extra tolerance
+        BODY_WIDTH_TOL = 0.083
         # Tolerance factor to shrink the width by
         EXTRA_WIDTH_TOL = 0
 
@@ -80,7 +82,8 @@ class ModernBase(LabelBase):
 
         with unit_registry.context("u", fn=_convert_u_to_mm):
             W_mm = args.width.to("mm").magnitude
-        H_mm = 22.117157  # I cannot work out the basis for this value
+        # Basis of height: 22.4mm, but then offset faces to give this value
+        H_mm = 22.117157
         if args.height is not None:
             H_mm = args.height.to("mm").magnitude
 
@@ -90,7 +93,7 @@ class ModernBase(LabelBase):
             )
 
         # Label constructed by angled extrusion of inner sketch
-        W_inner = W_mm - LABEL_DEPTH
+        W_inner = W_mm - LABEL_DEPTH - BODY_WIDTH_TOL
         H_inner = H_mm - LABEL_DEPTH
 
         with BuildPart() as part:
