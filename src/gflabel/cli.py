@@ -187,6 +187,13 @@ def run(argv: list[str] | None = None):
         type=pint.Quantity,
     )
     parser.add_argument(
+        "--label-depth",
+        help="Label depth, by default in mm.",
+        metavar="DEPTH",
+        default=None,
+        type=pint.Quantity,
+    )
+    parser.add_argument(
         "--depth",
         help="How high (or deep) the label extrusion is.",
         metavar="DEPTH_MM",
@@ -330,6 +337,9 @@ def run(argv: list[str] | None = None):
     # Height with unspecified units is mm
     if args.height and args.height.units == unit_registry.dimensionless:
         args.height = pint.Quantity(args.height.magnitude, unit_registry.mm)
+
+    if args.label_depth and args.label_depth.units == unit_registry.dimensionless:
+        args.label_depth = pint.Quantity(args.label_depth.magnitude, unit_registry.mm)
 
     if args.margin is None:
         args.margin = base_type.DEFAULT_MARGIN

@@ -51,15 +51,21 @@ class ModernBase(LabelBase):
         # width = args.width
         # height_mm = args.height
 
+        # Label depth (as of Rev2.3) is dependent on acetate window depth:
+        #       depth = #window_t + 1.2
+        # Just treat this as a configurable depth, and we can change this
+        # to be something easier to remember later
+        LABEL_DEPTH = args.label_depth.to("mm").magnitude if args.label_depth else 2.2
+
         KNOWN_WIDTHS = {3: 31.8, 4: 50.8, 5: 75.8, 6: 115.8, 7: 140.800, 8: 140.800}
         # Tolerance factor to shrink the width by
-        EXTRA_WIDTH_TOL = 0.5
+        EXTRA_WIDTH_TOL = 0
 
         # The indent is 15.8mm narrower than the label width
         INDENT_WIDTH_MARGINS = 15.8
         # Tolerance factor to enlarge the indent width by
-        EXTRA_INDENT_TOL = 0.4
-        INDENT_DEPTH = 0.6 + 0.2
+        EXTRA_INDENT_TOL = 0
+        INDENT_DEPTH = 0.6
 
         def _convert_u_to_mm(u: pint.Quantity):
             if u.magnitude not in KNOWN_WIDTHS:
@@ -78,14 +84,17 @@ class ModernBase(LabelBase):
         if args.height is not None:
             H_mm = args.height.to("mm").magnitude
 
-        depth = 2.2
+        if LABEL_DEPTH >= H_mm / 2 or LABEL_DEPTH >= W_mm / 2:
+            raise ValueError(
+                f"Error: Cannot have label depth ({LABEL_DEPTH:.1f} mm) being greater than half the width ({W_mm/2:.1f} mm) or height ({H_mm/2:.1f} mm)"
+            )
 
         # Label constructed by angled extrusion of inner sketch
-        W_inner = W_mm - depth
-        H_inner = H_mm - depth
+        W_inner = W_mm - LABEL_DEPTH
+        H_inner = H_mm - LABEL_DEPTH
 
         with BuildPart() as part:
-            with BuildSketch(Plane.XY.offset(amount=-depth / 2)) as _sketch:
+            with BuildSketch(Plane.XY.offset(amount=-LABEL_DEPTH / 2)) as _sketch:
                 with BuildLine() as _line:
                     corner_length = 1.8
                     corner_off = corner_length * math.sin(math.pi / 4)
@@ -100,15 +109,15 @@ class ModernBase(LabelBase):
                     )
                     mirror(_line.line, Plane.YZ)
                 make_face()
-            extrude(amount=depth / 2, taper=-45, both=True)
+            extrude(amount=LABEL_DEPTH / 2, taper=-45, both=True)
 
             # Add the flattened base
             with BuildPart(mode=Mode.PRIVATE) as _bottom_part:
-                with Locations([(0, -H_mm / 2, -depth / 2)]):
+                with Locations([(0, -H_mm / 2, -LABEL_DEPTH / 2)]):
                     Box(
                         W_mm,
-                        depth,
-                        depth,
+                        LABEL_DEPTH,
+                        LABEL_DEPTH,
                         align=(Align.CENTER, Align.MIN, Align.CENTER),
                     )
 
@@ -122,7 +131,7 @@ class ModernBase(LabelBase):
 
             # Add the indent
             # 60mm x 13mm, 4.7m from bottom
-            with Locations([(0, -H_mm / 2 + 4.7, -depth)]):
+            with Locations([(0, -H_mm / 2 + 4.7, -LABEL_DEPTH)]):
                 Box(
                     W_mm - INDENT_WIDTH_MARGINS + EXTRA_INDENT_TOL,
                     13,
