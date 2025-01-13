@@ -61,12 +61,12 @@ class ModernBase(LabelBase):
         # The main body (e.g. the angled parts) has this extra tolerance
         BODY_WIDTH_TOL = 0.083
         # Tolerance factor to shrink the width by
-        EXTRA_WIDTH_TOL = 0
+        EXTRA_WIDTH_TOL = 0.4 - BODY_WIDTH_TOL
 
         # The indent is 15.8mm narrower than the label width
         INDENT_WIDTH_MARGINS = 15.8
         # Tolerance factor to enlarge the indent width by
-        EXTRA_INDENT_TOL = 0
+        EXTRA_INDENT_TOL = 0.3
         INDENT_DEPTH = 0.6
 
         def _convert_u_to_mm(u: pint.Quantity):
