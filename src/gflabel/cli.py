@@ -9,12 +9,16 @@ import os
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Sequence, Optional
 
 import build123d as bd
 import pint
 import rich
 import rich.table
+
+import tempfile
+import shutil
+import zipfile
 
 # from build123d import *
 from build123d import (
@@ -152,6 +156,60 @@ def base_name_to_subclass(name: str) -> type[LabelBase]:
         )
     return bases[name]
 
+def write_slic3r_pe_model_config(obj_name: str,
+                                 triangles: Sequence[int],
+                                 body_extruder: Optional[int] = None,
+                                 text_extruder: Optional[int] = None,
+                                 ) -> str:
+    """Create flimsy rendering of slic3r_pe_model.config"""
+    xmlstring = """<?xml version="1.0" encoding="UTF-8"?>\n"""
+    xmlstring += """<config>\n"""
+    total_tris = 0
+
+    for i, num_tris in enumerate(triangles):
+        # It appears that each object is written to the 3mf twice?
+        # so we need to pick 1 (base) + 3,5,7 (for text stuff)
+        xmlstring += f"""<object id="{i*2 + 1}" instances_count="1">\n"""
+        xmlstring += f"""  <metadata type="object" key="name" value="{obj_name}_{i*2 + 1}"/>\n"""
+        # This allows extruder id's to pass through when "NO" is selected in the "multipart-part object" dialog is prusaslicer
+        if i == 0 and body_extruder is not None and isinstance(body_extruder, int):
+            xmlstring += f"""  <metadata type="object" key="extruder" value="{body_extruder}"/>\n"""
+        elif i > 0 and text_extruder is not None and isinstance(text_extruder, int):
+            xmlstring += f"""  <metadata type="object" key="extruder" value="{text_extruder}"/>\n"""
+        xmlstring += f"""  <volume firstid="0" lastid="{num_tris-1}">\n"""
+        xmlstring += f"""    <metadata type="volume" key="name" value="{obj_name}_vol_{i*2 + 1}"/>\n"""
+        # This allows extruder id's to pass through when "YES" is selected in the "multipart-part object" dialog is prusaslicer
+        # ... once/if my pull request is actioned -- https://github.com/prusa3d/PrusaSlicer/pull/14525
+        if i == 0 and body_extruder is not None and isinstance(body_extruder, int):
+            xmlstring += f"""    <metadata type="volume" key="extruder" value="{body_extruder}"/>\n"""
+        elif i > 0 and text_extruder is not None and isinstance(text_extruder, int):
+            xmlstring += f"""    <metadata type="volume" key="extruder" value="{text_extruder}"/>\n"""
+        xmlstring += f"""  </volume>\n"""
+        xmlstring += f"""</object>\n"""
+        total_tris += num_tris
+    xmlstring += f"""</config>\n"""
+    return xmlstring
+
+def add_file_to_3mf(threemf_file: Path, file_to_add: Path, path_in_zip: Path) -> None:
+    """overwrites existing threemf_file with equivalent w/ file_to_add added in position path_in_zip"""
+    # Create temporary .zip file and copy the contents of .3mf file to it (so zipfile library doesn't complain)
+    with tempfile.NamedTemporaryFile(suffix=".zip") as renamed_3mf_as_zip:
+        shutil.copy(threemf_file, str(renamed_3mf_as_zip.name))
+        # Create temporary .zip file which will contain original contents + the file we're adding
+        with tempfile.NamedTemporaryFile(suffix=".zip") as modified_3mf_as_zip:
+            # Open the .zip equipvalent of the renamed .3mf file, and the final result
+            with zipfile.ZipFile(renamed_3mf_as_zip.name, 'r') as zin:
+                with zipfile.ZipFile(modified_3mf_as_zip.name, 'w') as zout:
+                    # Copy all content of .3mf zip file
+                    for item in zin.infolist():
+                        buffer = zin.read(item.filename)
+                        # if item.filename == "3D/3dmodel.model":
+                        #     Path("current_3dmodel.model").write_bytes(buffer)
+                        zout.writestr(item, buffer)
+                    # Add designated file
+                    zout.write(file_to_add, arcname=str(path_in_zip))
+                    # zout.write("slicer.config", arcname="Metadata/Slic3r_PE_model.config")
+            shutil.copy(modified_3mf_as_zip.name, f"{threemf_file}")
 
 def run(argv: list[str] | None = None):
     # Handle the old way of specifying base
@@ -205,7 +263,28 @@ def run(argv: list[str] | None = None):
         help="Disable the 'Overheight' system. This allows some symbols to oversize, meaning that the rest of the line will first shrink before they are shrunk.",
         action="store_true",
     )
-
+    parser.add_argument(
+        "--place-labeltext-on-plate",
+        dest="place_labeltext_on_plate",
+        help="reorient body such that embedded text is facing buildplate (down) [style=embedded only]",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--3mf-text-extruder",
+        dest="threemf_text_extruder",
+        help="Which extruder to associate with text volumes in .3mf",
+        action="store",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
+        "--3mf-body-extruder",
+        dest="threemf_body_extruder",
+        help="Which extruder to associate with body volume in .3mf",
+        action="store",
+        type=int,
+        default=None,
+    )
     parser.add_argument("labels", nargs="+", metavar="LABEL")
     parser.add_argument(
         "-d",
@@ -419,8 +498,9 @@ def run(argv: list[str] | None = None):
     if args.style == LabelStyle.EMBEDDED:
         # We want to make new volumes for the label, making it flush
         embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
-        embedded_label.label = "Label"
         assembly = Compound([part.part, embedded_label])
+        if args.place_labeltext_on_plate:
+            assembly = assembly.mirror(bd.Plane.XY)
     else:
         assembly = Compound(part.part)
 
@@ -444,6 +524,26 @@ def run(argv: list[str] | None = None):
             logger.info(f"Writing SVG {output}")
             exporter.add_shape(label_sketch.sketch, layer="Shapes")
             exporter.write(output)
+        elif output.endswith(".3mf"):
+            exporter = bd.Mesher()
+            exporter.add_shape(assembly)
+            logger.info(f"Writing 3MF {output}")
+            exporter.write(output)
+            if args.threemf_body_extruder is not None or args.threemf_text_extruder is not None:
+                pe_model_config_text = write_slic3r_pe_model_config(obj_name=Path(output).stem,
+                                                                    triangles=exporter.triangle_counts,
+                                                                    body_extruder=args.threemf_body_extruder,
+                                                                    text_extruder=args.threemf_text_extruder,
+                                                                    )
+
+                with tempfile.NamedTemporaryFile(suffix=".config") as slicer_config:
+                    # There may be a built-in way to include a text file (metadata) as part of Mesher(above)
+                    # but i haven't yet figured out how to do it.
+                    Path(slicer_config.name).write_text(pe_model_config_text, encoding="utf-8")
+                    logger.info(f"Updating 3MF {output} w/ Slic3r_PE_model.config")
+                    add_file_to_3mf(threemf_file=output,
+                                    file_to_add=slicer_config.name,
+                                    path_in_zip=Path("Metadata/Slic3r_PE_model.config"))
         else:
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
