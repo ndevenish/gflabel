@@ -500,7 +500,7 @@ def run(argv: list[str] | None = None):
         embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
         assembly = Compound([part.part, embedded_label])
         if args.place_labeltext_on_plate:
-            assembly = assembly.mirror(bd.Plane.XY)
+            assembly = assembly.rotate(axis=bd.Axis.X, angle=180)
     else:
         assembly = Compound(part.part)
 
