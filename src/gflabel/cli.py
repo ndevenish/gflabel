@@ -16,10 +16,6 @@ import pint
 import rich
 import rich.table
 
-import tempfile
-import shutil
-import zipfile
-
 # from build123d import *
 from build123d import (
     BuildPart,
@@ -189,27 +185,6 @@ def write_slic3r_pe_model_config(obj_name: str,
         total_tris += num_tris
     xmlstring += f"""</config>\n"""
     return xmlstring
-
-def add_file_to_3mf(threemf_file: Path, file_to_add: Path, path_in_zip: Path) -> None:
-    """overwrites existing threemf_file with equivalent w/ file_to_add added in position path_in_zip"""
-    # Create temporary .zip file and copy the contents of .3mf file to it (so zipfile library doesn't complain)
-    with tempfile.NamedTemporaryFile(suffix=".zip") as renamed_3mf_as_zip:
-        shutil.copy(threemf_file, str(renamed_3mf_as_zip.name))
-        # Create temporary .zip file which will contain original contents + the file we're adding
-        with tempfile.NamedTemporaryFile(suffix=".zip") as modified_3mf_as_zip:
-            # Open the .zip equipvalent of the renamed .3mf file, and the final result
-            with zipfile.ZipFile(renamed_3mf_as_zip.name, 'r') as zin:
-                with zipfile.ZipFile(modified_3mf_as_zip.name, 'w') as zout:
-                    # Copy all content of .3mf zip file
-                    for item in zin.infolist():
-                        buffer = zin.read(item.filename)
-                        # if item.filename == "3D/3dmodel.model":
-                        #     Path("current_3dmodel.model").write_bytes(buffer)
-                        zout.writestr(item, buffer)
-                    # Add designated file
-                    zout.write(file_to_add, arcname=str(path_in_zip))
-                    # zout.write("slicer.config", arcname="Metadata/Slic3r_PE_model.config")
-            shutil.copy(modified_3mf_as_zip.name, f"{threemf_file}")
 
 def run(argv: list[str] | None = None):
     # Handle the old way of specifying base
@@ -527,23 +502,17 @@ def run(argv: list[str] | None = None):
         elif output.endswith(".3mf"):
             exporter = bd.Mesher()
             exporter.add_shape(assembly)
-            logger.info(f"Writing 3MF {output}")
-            exporter.write(output)
             if args.threemf_body_extruder is not None or args.threemf_text_extruder is not None:
                 pe_model_config_text = write_slic3r_pe_model_config(obj_name=Path(output).stem,
                                                                     triangles=exporter.triangle_counts,
                                                                     body_extruder=args.threemf_body_extruder,
                                                                     text_extruder=args.threemf_text_extruder,
                                                                     )
-
-                with tempfile.NamedTemporaryFile(suffix=".config") as slicer_config:
-                    # There may be a built-in way to include a text file (metadata) as part of Mesher(above)
-                    # but i haven't yet figured out how to do it.
-                    Path(slicer_config.name).write_text(pe_model_config_text, encoding="utf-8")
-                    logger.info(f"Updating 3MF {output} w/ Slic3r_PE_model.config")
-                    add_file_to_3mf(threemf_file=output,
-                                    file_to_add=slicer_config.name,
-                                    path_in_zip=Path("Metadata/Slic3r_PE_model.config"))
+                attachment = exporter.model.AddAttachment("Metadata/Slic3r_PE_model.config", "application/xml")
+                # ReadFromBuffer - "Read from Buffer into attachment file"
+                attachment.ReadFromBuffer(pe_model_config_text.encode("utf-8"))
+            logger.info(f"Writing 3MF {output}")
+            exporter.write(output)
         else:
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
