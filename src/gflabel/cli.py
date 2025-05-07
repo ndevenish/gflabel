@@ -7,9 +7,14 @@ import argparse
 import logging
 import os
 import sys
+import math
+import ctypes
+import copy
+import warnings
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Sequence, Optional
+from typing import Any, Sequence, Optional, Tuple, List
+from xml.dom import minidom
 
 import build123d as bd
 import pint
@@ -35,6 +40,8 @@ from build123d import (
     export_step,
     extrude,
 )
+
+from build123d.geometry import TOLERANCE
 
 from . import fragments
 from .bases import LabelBase
@@ -152,39 +159,63 @@ def base_name_to_subclass(name: str) -> type[LabelBase]:
         )
     return bases[name]
 
-def write_slic3r_pe_model_config(obj_name: str,
-                                 triangles: Sequence[int],
+def write_slic3r_pe_model_config(volume_offsets: Sequence[Tuple[int, int]],
+                                 obj_name: str,
                                  body_extruder: Optional[int] = None,
                                  text_extruder: Optional[int] = None,
                                  ) -> str:
-    """Create flimsy rendering of slic3r_pe_model.config"""
-    xmlstring = """<?xml version="1.0" encoding="UTF-8"?>\n"""
-    xmlstring += """<config>\n"""
-    total_tris = 0
+    """Create rendering of Slic3r_PE_model.config"""
+    doc = minidom.Document()
+    root = doc.createElement("config")
+    doc.appendChild(root)
 
-    for i, num_tris in enumerate(triangles):
-        # It appears that each object is written to the 3mf twice?
-        # so we need to pick 1 (base) + 3,5,7 (for text stuff)
-        xmlstring += f"""<object id="{i*2 + 1}" instances_count="1">\n"""
-        xmlstring += f"""  <metadata type="object" key="name" value="{obj_name}_{i*2 + 1}"/>\n"""
-        # This allows extruder id's to pass through when "NO" is selected in the "multipart-part object" dialog is prusaslicer
-        if i == 0 and body_extruder is not None and isinstance(body_extruder, int):
-            xmlstring += f"""  <metadata type="object" key="extruder" value="{body_extruder}"/>\n"""
-        elif i > 0 and text_extruder is not None and isinstance(text_extruder, int):
-            xmlstring += f"""  <metadata type="object" key="extruder" value="{text_extruder}"/>\n"""
-        xmlstring += f"""  <volume firstid="0" lastid="{num_tris-1}">\n"""
-        xmlstring += f"""    <metadata type="volume" key="name" value="{obj_name}_vol_{i*2 + 1}"/>\n"""
-        # This allows extruder id's to pass through when "YES" is selected in the "multipart-part object" dialog is prusaslicer
-        # ... once/if my pull request is actioned -- https://github.com/prusa3d/PrusaSlicer/pull/14525
-        if i == 0 and body_extruder is not None and isinstance(body_extruder, int):
-            xmlstring += f"""    <metadata type="volume" key="extruder" value="{body_extruder}"/>\n"""
-        elif i > 0 and text_extruder is not None and isinstance(text_extruder, int):
-            xmlstring += f"""    <metadata type="volume" key="extruder" value="{text_extruder}"/>\n"""
-        xmlstring += f"""  </volume>\n"""
-        xmlstring += f"""</object>\n"""
-        total_tris += num_tris
-    xmlstring += f"""</config>\n"""
-    return xmlstring
+    obj = doc.createElement("object")
+    obj.setAttribute(attname="id", value="1")
+    obj.setAttribute(attname="instances_count", value=str(len(volume_offsets)))
+    root.appendChild(obj)
+
+    obj_metadata = doc.createElement("metadata")
+    for k, v in dict(type="object",
+                     key="name",
+                     value=str(obj_name)).items():
+        obj_metadata.setAttribute(attname=k, value=v)
+    obj.appendChild(obj_metadata)
+
+    for volume_id, vol_range in enumerate(volume_offsets):
+        volume = doc.createElement("volume")
+        volume.setAttribute(attname="firstid", value=str(vol_range[0]))
+        volume.setAttribute(attname="lastid", value=str(vol_range[1]))
+        volume_metadata_name = doc.createElement("metadata")
+        for k, v in dict(type="volume",
+                         key="name",
+                         value=f"{obj_name}_body" if volume_id == 0 else f"{obj_name}_text_{volume_id}").items():
+            volume_metadata_name.setAttribute(attname=k, value=v)
+        volume.appendChild(volume_metadata_name)
+        if volume_id == 0 and body_extruder is not None and isinstance(body_extruder, int):
+            vol_metadata_extruder = doc.createElement("metadata")
+            for k, v in dict(type="volume",
+                             key="extruder",
+                             value=str(body_extruder)).items():
+                vol_metadata_extruder.setAttribute(attname=k, value=v)
+                volume.appendChild(vol_metadata_extruder)
+        elif volume_id > 0 and text_extruder is not None and isinstance(text_extruder, int):
+            vol_metadata_extruder = doc.createElement("metadata")
+            for k, v in dict(type="volume",
+                             key="extruder",
+                             value=str(text_extruder)).items():
+                vol_metadata_extruder.setAttribute(attname=k, value=v)
+                volume.appendChild(vol_metadata_extruder)
+        obj.appendChild(volume)
+    return doc.toprettyxml(indent=" ", encoding="UTF-8").decode("utf-8")
+
+def round_mesh_vertices(tolerance: float, verts: List[Tuple[float, float, float]]) -> List[Tuple[float, float, float]]:
+    """round list of vertices to a given tolerance"""
+    digits = -int(round(math.log(tolerance, 10), 1))
+    ocp_mesh_vertices = [
+        (round(x, digits), round(y, digits), round(z, digits))
+        for x, y, z in verts
+    ]
+    return ocp_mesh_vertices
 
 def run(argv: list[str] | None = None):
     # Handle the old way of specifying base
@@ -501,10 +532,76 @@ def run(argv: list[str] | None = None):
             exporter.write(output)
         elif output.endswith(".3mf"):
             exporter = bd.Mesher()
-            exporter.add_shape(assembly)
+
+            # -- Below, we'll recreate exporter.add_shape(), modifying some behavior throughout. --
+            volume_offsets: List[int] = [] # Capture how we'll partition parts in the object
+            unique_vertices: Sequence[Tuple[float, float, float]] = [] # No need to place duplicate vertices in 3dmodel.model
+            triangles_3mf: Sequence[bd.Lib3MF.Triangle] = []  # Create triangle point list
+
+            for b3d_shape in assembly.solids():
+                ocp_mesh_vertices, triangles = bd.Mesher._mesh_shape(ocp_mesh=copy.deepcopy(b3d_shape),
+                                                                     linear_deflection=0.001,
+                                                                     angular_deflection=0.1,
+                                                                     )
+                # Skip invalid meshes
+                if len(ocp_mesh_vertices) < 3 or not triangles:
+                    warnings.warn(f"Degenerate shape {b3d_shape} - skipped",
+                                  stacklevel=2,
+                                  )
+                    continue
+
+                # -- Below represents portions of exporter._create_3mf_mesh() --
+                # Round off the vertices to avoid vertices within tolerance being
+                # considered as different vertices
+                ocp_mesh_vertices = round_mesh_vertices(tolerance=TOLERANCE, verts=ocp_mesh_vertices)
+
+                # Create 3mf mesh inputs - Find any verts from ocp_mesh_vertices which don't exist in
+                # unique_vertices. Apppend the result to unique vertices.
+                unique_vertices.extend(list(set(ocp_mesh_vertices).difference(set(unique_vertices))))
+                vert_table = {
+                    i: unique_vertices.index(pnt) for i, pnt in enumerate(ocp_mesh_vertices)
+                }
+
+                index_start = len(triangles_3mf)  # Need to capture before modifying triangles_3mf
+                for vertex_indices in triangles:
+                    mapped_indices = [
+                        vert_table[i] for i in [vertex_indices[i] for i in range(3)]
+                    ]
+                    # Remove degenerate triangles
+                    if len(set(mapped_indices)) != 3:
+                        continue
+                    c_array = (ctypes.c_uint * 3)(*mapped_indices)
+                    triangles_3mf.append(bd.Lib3MF.Triangle(c_array))
+
+                # Record start/end id of triangles for later use
+                volume_offsets.append((index_start, len(triangles_3mf) - 1))
+
+            # Create vertex list of 3MF positions
+            vertices_3mf: Sequence[bd.Lib3MF.Position] = []
+            for pnt in unique_vertices:
+                c_array = (ctypes.c_float * 3)(*pnt)
+                vertices_3mf.append(bd.Lib3MF.Position(c_array))
+                # mesh_3mf.AddVertex  Should AddVertex be used to save memory?
+
+            # Build the mesh
+            mesh_3mf: bd.Lib3MF.MeshObject = exporter.model.AddMeshObject()
+            mesh_3mf.SetGeometry(vertices_3mf, triangles_3mf)
+
+            # Add the mesh properties
+            mesh_3mf.SetType(bd.Mesher._map_b3d_mesh_type_3mf[bd.MeshType.MODEL])
+            if b3d_shape.label:
+                mesh_3mf.SetName(b3d_shape.label)
+
+            # Add color
+            exporter._add_color(b3d_shape, mesh_3mf)
+
+            # Add mesh to model
+            exporter.meshes.append(mesh_3mf)
+            exporter.model.AddBuildItem(mesh_3mf, exporter.wrapper.GetIdentityTransform())
+
             if args.threemf_body_extruder is not None or args.threemf_text_extruder is not None:
                 pe_model_config_text = write_slic3r_pe_model_config(obj_name=Path(output).stem,
-                                                                    triangles=exporter.triangle_counts,
+                                                                    volume_offsets=volume_offsets,
                                                                     body_extruder=args.threemf_body_extruder,
                                                                     text_extruder=args.threemf_text_extruder,
                                                                     )
