@@ -1,5 +1,6 @@
 # GFLabel 0.3.dev
 
+- Added `square_nut` fragment. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
 - Added `wafer` bold head profile. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
 
 # GFLabel 0.2.0 (2025-01-03)

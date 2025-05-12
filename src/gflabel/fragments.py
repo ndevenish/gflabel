@@ -455,6 +455,15 @@ def _fragment_circle(height: float, _maxsize: float) -> Sketch:
         Circle(height / 2)
     return sketch.sketch
 
+@fragment("square_nut", examples=["{square_nut}"])
+def _fragment_square_nut(height: float, _maxsize: float) -> Sketch:
+    """Square with a circular hole."""
+    with BuildSketch(mode=Mode.PRIVATE) as sketch:
+        inner_radius = 0.55
+        Rectangle(height, height)
+        Circle(height / 2 * inner_radius, mode=Mode.SUBTRACT)
+    return sketch.sketch
+
 
 class BoltBase(Fragment):
     """Base class for handling common bolt/screw configuration"""
