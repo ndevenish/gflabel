@@ -1,8 +1,12 @@
+# GFLabel 0.3.dev
+
+- Added `wafer` bold head profile. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
+
 # GFLabel 0.2.0 (2025-01-03)
 
 - Label base type must now always be specified. You can pass `pred` to
   get the old default kind. You can also specify partial/incomplete
-  names, as long as it is unambuguous (e.g. `gflabel cull` will select
+  names, as long as it is unambiguous (e.g. `gflabel cull` will select
   `cullenect` labels).
 - Added new base: `modern`, to generate labels for [Modern Gridfinity Base][modern].
 - The "webb" base type has been renamed to "cullenect", to reflect the
@@ -25,11 +29,13 @@
   standards version.
 - Added alias "Robertson" for square-drive, as it is generally used in
   Canada. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
-- Added `{circle} {nut_profile} {locknut_profile}` fragments. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
+- Added `{circle}`, `{nut_profile}`, and `{locknut_profile}` fragments. Thanks
+  to [@MinchinWeb](https://github.com/MinchinWeb).
 - Bugfix: Specifying output filename will no longer break generation
   when written before the label contents.
-- Bugfix: Countersunk screws were incorrectly treating the head of the
-  screw separately from the body length. Thanks to [@MinchinWeb](https://github.com/MinchinWeb).
+- Bugfix: Countersunk screws were incorrectly treating the head of the screw
+  separately from the body length. Thanks to
+  [@MinchinWeb](https://github.com/MinchinWeb).
 
 [modern]: https://www.printables.com/model/894202-modern-gridfinity-case
 

@@ -300,8 +300,8 @@ There are two classes of bolt/screw representation:
 [cullenect]: https://makerworld.com/en/models/446624
 
 Both types of bolts will accept a head style, one of `pan`, `socket`, `round`,
-or `countersunk`. Both can be marked as `tapping` to have a pointed tip, and
-both can be pointed backwards by adding the `flipped` feature.
+`countersunk` or `wafer`. Both can be marked as `tapping` to have a pointed
+tip, and both can be pointed backwards by adding the `flipped` feature.
 
 Examples showing some differences between the two bolts:
 
