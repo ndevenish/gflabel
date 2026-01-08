@@ -123,7 +123,7 @@ The full command parameter usage (as generate by `gflabel --help`):
 usage: gflabel [-h] [--vscode] [-w WIDTH] [--height HEIGHT] [--depth DEPTH_MM] [--no-overheight] [-d DIVISIONS] [--font FONT]
                [--font-size-maximum FONT_SIZE_MAXIMUM | --font-size FONT_SIZE] [--font-style {regular,bold,italic}] [--font-path FONT_PATH]
                [--margin MARGIN] [-o OUTPUT] [--style {embossed,debossed,embedded}] [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP]
-               [--column-gap COLUMN_GAP] [-v] [--version VERSION]
+               [--column-gap COLUMN_GAP] [--xscale XSCALE] [--yscale YSCALE] [--zscale ZSCALE] [-v] [--version VERSION]
                BASE LABEL [LABEL ...]
 
 Generate gridfinity bin labels
@@ -166,6 +166,9 @@ options:
                         Vertical gap (in mm) between physical labels. Default: 2 mm
   --column-gap COLUMN_GAP
                         Gap (in mm) between columns
+  --xscale,--yscale,--zscale
+                        Scale factor for entire label along the corresponding axis. Useful when you need slight adjustments for proper fit.
+                        [All default to 1.0]
   -v, --verbose         Verbose output
   --version VERSION     The version of geometry to use for a given label system (if a system has versions). [Default: latest]
 ```
