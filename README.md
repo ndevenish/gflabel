@@ -115,6 +115,14 @@ gflabel predbox -w 5 "HEX\n{head(hex)} {bolt(5)}{3|}{<}M2\nM3\nM4\nM5{2|2}{<}M6\
 
 ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_hex.png)
 
+This is an example of a Tailor Box label using multiple columns, rows, and symbols.
+
+```
+gflabel tailorbox -w=5 "M3 {|} Bolts Nuts\nWashers\n{hexhead(hex)} {hexhead(torx)} {nut} {washer}"
+```
+
+![](https://github.com/hartd92/gflabel/raw/refs/heads/readme_images/example_tailor.png)
+
 ## Command Parameters
 
 The full command parameter usage (as generate by `gflabel --help`):
@@ -197,6 +205,7 @@ The base (specified by `--base=TYPE`) defines the shape of what the label is gen
 | ---- | ----------- | ----- |
 | `pred` | For [Pred's parametric labelled bins][predlabel] labels. If specifying this style, then height is ignored and width is in gridfinity units (e.g. `--width=1` for a label for a single 42mm bin). | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_pred.png) |
 | `predbox` | For labels matching the style of [Pred's Parametric Storage Box][predbox]. These are larger (~25 mm) labels for slotting in the front of the parametric storage boxes. `--width` is for the storage bin width, and is 4, 5, 6, or 7 u. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_predbox.png)
+| `tailorbox ` | For labels matching the style of [Tailor Glad's Storage Box][tailorbox]. These are even larger labels for slotting in the front of the storage boxes. `--width` is for the storage bin width, and currently only accepts 5u. | ![](https://github.com/hartd92/gflabel/raw/refs/heads/readme_images/base_tailor.png)
 | `plain` | For a blank, square label with a chamfered top edge. The specified width and height will be the whole area of the label base. You must specify at least a width. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_plain.png)
 | `cullenect` | For [Cullen J Webb's ](https://makerworld.com/en/models/446624) swappable label system. Label is a 36.4 mm x 11 mm rounded rectangle with snap-fit inserts on the back. Use without margins to match the author's style labels. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_cullenect.png)
 | `modern` | For [Modern Gridfinity Case][modern] labels, ~22 mm high labels that slot into the front. `--width` is for the storage bin width, and can be 3, 4, 5, 6, 7 or 8 u. | ![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/base_modern.png) |
@@ -204,6 +213,7 @@ The base (specified by `--base=TYPE`) defines the shape of what the label is gen
 
 [predlabel]: https://www.printables.com/model/592545-gridfinity-bin-with-printable-label-by-pred-parame
 [predbox]: https://www.printables.com/model/543553-gridfinity-storage-box-by-pred-now-parametric
+[tailorbox]: https://www.printables.com/model/1152814-gridfinity-hardware-storage-system-beta
 [modern]: https://www.printables.com/model/894202-modern-gridfinity-case
 
 ### Label Styles
