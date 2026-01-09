@@ -43,6 +43,7 @@ from .bases.modern import ModernBase
 from .bases.none import NoneBase
 from .bases.plain import PlainBase
 from .bases.pred import PredBase, PredBoxBase
+from .bases.tailor import TailorBoxBase
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
 from .util import IndentingRichHandler, batched, unit_registry
@@ -111,7 +112,7 @@ class BaseChoiceAction(argparse.Action):
         if values in deprecated_choices:
             values = deprecated_choices[values]
 
-        choices = ["pred", "plain", "none", "cullenect", "predbox", "modern"]
+        choices = ["pred", "plain", "none", "cullenect", "predbox", "tailorbox", "modern"]
 
         if values not in choices:
             # Allow prefix-only of choice name, as long as unambiguous
@@ -142,6 +143,7 @@ def base_name_to_subclass(name: str) -> type[LabelBase]:
         "modern": ModernBase,
         "pred": PredBase,
         "predbox": PredBoxBase,
+        "tailorbox":TailorBoxBase,
         "plain": PlainBase,
         "none": NoneBase,
         None: NoneBase,
@@ -164,7 +166,7 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "base",
         metavar="BASE",
-        help="Label base to generate onto (pred, plain, none, cullenect, predbox, modern).",
+        help="Label base to generate onto (pred, plain, none, cullenect, predbox, tailorbox, modern).",
         action=BaseChoiceAction,
     )
     parser.add_argument(
