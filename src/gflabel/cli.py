@@ -446,7 +446,7 @@ def run(argv: list[str] | None = None):
                 *label_sketch.sketch.bounding_box().size, label_area.X, label_area.Y
             )
             exporter = ExportSVG(scale=100 / max_dimension)
-            exporter.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
+            exporter.add_layer("Shapes", fill_color=Color(args.label_color), line_weight=0)
 
             if args.box and is_2d:
                 exporter.add_layer("Box", line_weight=1)
