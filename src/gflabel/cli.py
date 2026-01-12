@@ -35,6 +35,7 @@ from build123d import (
     add,
     export_step,
     extrude,
+    scale,
 )
 
 from . import fragments
@@ -297,6 +298,15 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
     )
+    parser.add_argument(
+        "--xscale", help="Scale factor for entire label on the X axis", default=1.0, type=float
+    )
+    parser.add_argument(
+        "--yscale", help="Scale factor for entire label on the Y axis", default=1.0, type=float
+    )
+    parser.add_argument(
+        "--zscale", help="Scale factor for entire label on the Z axis", default=1.0, type=float
+    )
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     parser.add_argument(
@@ -433,6 +443,8 @@ def run(argv: list[str] | None = None):
             embedded_or_embossed_label.label = "Label"
             embedded_or_embossed_label.color = Color(args.label_color)
             assembly = Compound(children=[part.part, embedded_or_embossed_label])
+
+    assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
     for output in args.output:
         if output.endswith(".stl"):
