@@ -20,6 +20,7 @@ import rich.table
 from build123d import (
     BuildPart,
     BuildSketch,
+    Color,
     ColorIndex,
     Compound,
     ExportSVG,
@@ -156,7 +157,7 @@ def base_name_to_subclass(name: str) -> type[LabelBase]:
 
 def run(argv: list[str] | None = None):
     # Handle the old way of specifying base
-    if any(x.startswith("--base") for x in (argv or sys.argv)):
+    if any((x.startswith("--base") and x != "--base-color") for x in (argv or sys.argv)):
         sys.exit(
             "Error: --base is no longer the way to specify base geometry. Please pass in as a direct argument (gflabel <BASE>)"
         )
@@ -265,6 +266,18 @@ def run(argv: list[str] | None = None):
         choices=LabelStyle,
         default=LabelStyle.EMBOSSED,
         type=LabelStyle,
+    )
+    parser.add_argument(
+        "--base-color",
+        help="The name of a color used for rendering the base. Can be any of the recognized OCCT color names.",
+        type=str,
+        default="orange",
+    )
+    parser.add_argument(
+        "--label-color",
+        help="The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style 'debossed'.",
+        type=str,
+        default="blue",
     )
     parser.add_argument(
         "--list-fragments",
@@ -416,23 +429,20 @@ def run(argv: list[str] | None = None):
                     add(body.part)
 
             logger.debug("Extruding labels")
-            is_embossed = args.style == LabelStyle.EMBOSSED
-            extrude(
-                label_sketch.sketch,
-                amount=args.depth if is_embossed else -args.depth,
-                mode=(Mode.ADD if is_embossed else Mode.SUBTRACT),
-            )
+            if args.style == LabelStyle.DEBOSSED:
+                extrude(label_sketch.sketch, amount=-args.depth, mode=Mode.SUBTRACT)
 
     if not is_2d:
         part.part.label = "Base"
+        part.part.color = Color(args.base_color)
 
-    if args.style == LabelStyle.EMBEDDED:
-        # We want to make new volumes for the label, making it flush
-        embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
-        embedded_label.label = "Label"
-        assembly = Compound([part.part, embedded_label])
-    else:
-        assembly = Compound(part.part)
+        if args.style == LabelStyle.DEBOSSED:
+            assembly = Compound(children=[part.part])
+        else:
+            embedded_or_embossed_label = extrude(label_sketch.sketch, amount=(args.depth if args.style == LabelStyle.EMBOSSED else -args.depth))
+            embedded_or_embossed_label.label = "Label"
+            embedded_or_embossed_label.color = Color(args.label_color)
+            assembly = Compound(children=[part.part, embedded_or_embossed_label])
 
     assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
@@ -448,7 +458,7 @@ def run(argv: list[str] | None = None):
                 *label_sketch.sketch.bounding_box().size, label_area.X, label_area.Y
             )
             exporter = ExportSVG(scale=100 / max_dimension)
-            exporter.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
+            exporter.add_layer("Shapes", fill_color=Color(args.label_color), line_weight=0)
 
             if args.box and is_2d:
                 exporter.add_layer("Box", line_weight=1)
@@ -473,7 +483,7 @@ def run(argv: list[str] | None = None):
             if args.style == LabelStyle.EMBEDDED:
                 show_parts.append(part.part)
                 show_cols.append(None)
-                show_parts.append(embedded_label)
+                show_parts.append(embedded_or_embossed_label)
                 show_cols.append((0.2, 0.2, 0.2))
             else:
                 # Split the base for display as two colours
