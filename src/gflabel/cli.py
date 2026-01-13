@@ -35,7 +35,6 @@ from build123d import (
     add,
     export_step,
     extrude,
-    scale,
 )
 
 from . import fragments
@@ -269,13 +268,13 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--base-color",
-        help="The name of a color used for rendering the base. Can be any of the recognized OCCT color names. Default: %(default)s.",
+        help="The name of a color used for rendering the base. Can be any of the recognized OCCT color names.",
         type=str,
         default="orange",
     )
     parser.add_argument(
         "--label-color",
-        help="The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style 'debossed' except for 'vscode' rendering. Default: %(default)s.",
+        help="The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style 'debossed'.",
         type=str,
         default="blue",
     )
@@ -297,15 +296,6 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
-    )
-    parser.add_argument(
-        "--xscale", help="Scale factor for entire label on the X axis", default=1.0, type=float
-    )
-    parser.add_argument(
-        "--yscale", help="Scale factor for entire label on the Y axis", default=1.0, type=float
-    )
-    parser.add_argument(
-        "--zscale", help="Scale factor for entire label on the Z axis", default=1.0, type=float
     )
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
@@ -442,9 +432,7 @@ def run(argv: list[str] | None = None):
             embedded_or_embossed_label = extrude(label_sketch.sketch, amount=(args.depth if args.style == LabelStyle.EMBOSSED else -args.depth))
             embedded_or_embossed_label.label = "Label"
             embedded_or_embossed_label.color = Color(args.label_color)
-            assembly = Compound([part.part, embedded_or_embossed_label])
-
-    assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
+            assembly = Compound(children=[part.part, embedded_or_embossed_label])
 
     for output in args.output:
         if output.endswith(".stl"):

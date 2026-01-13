@@ -162,19 +162,16 @@ options:
   --style {embossed,debossed,embedded}
                         How the label contents are formed.
   --base-color BASE_COLOR
-                        The name of a color used for rendering the base. Can be any of the recognized OCCT color names.
+                        The name of a color used for rendering the base. Can be any of the recognized OCCT color names. Default: %(default)s.
   --label-color LABEL_COLOR
                         The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style
-                        'debossed'.
+                        'debossed' (except for 'vscode' rendering). Default: %(default)s.
   --list-fragments      List all available fragments.
   --list-symbols        List all available electronic symbols
   --label-gap LABEL_GAP
                         Vertical gap (in mm) between physical labels. Default: 2 mm
   --column-gap COLUMN_GAP
                         Gap (in mm) between columns
-  --xscale,--yscale,--zscale
-                        Scale factor for entire label along the corresponding axis. Useful when you need slight adjustments for proper fit.
-                        [All default to 1.0]
   -v, --verbose         Verbose output
   --version VERSION     The version of geometry to use for a given label system (if a system has versions). [Default: latest]
 ```
@@ -267,7 +264,6 @@ A list of all the fragments currently recognised:
 | nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
 | locknut_profile   | Rectangle with two horizontal lines, as the side view of a hex nut, with an added "top bump". |
 | lockwasher        | Circular washer with a locking cutout.                            |
-| tnut              | T-slot nut, rectangular horizontal profile                        |
 | magnet            | Horseshoe shaped magnet symbol.                                   |
 | measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
 | sym, symbol       | Render an electronic symbol.                                      |
