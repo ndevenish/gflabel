@@ -442,9 +442,9 @@ def run(argv: list[str] | None = None):
             embedded_or_embossed_label = extrude(label_sketch.sketch, amount=(args.depth if args.style == LabelStyle.EMBOSSED else -args.depth))
             embedded_or_embossed_label.label = "Label"
             embedded_or_embossed_label.color = Color(args.label_color)
-            assembly = Compound(children=[part.part, embedded_or_embossed_label])
+            assembly = Compound([part.part, embedded_or_embossed_label])
 
-    assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
+    #assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
     for output in args.output:
         if output.endswith(".stl"):
@@ -470,43 +470,31 @@ def run(argv: list[str] | None = None):
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
     if args.vscode:
-        show_parts = []
-        show_cols: list[str | tuple[float, float, float] | None] = []
-        # Export both step and stl in vscode_ocp mode
         if is_2d:
             show_parts.append(label_sketch.sketch)
         else:
+            # Export both step and stl in vscode_ocp mode
             logger.info("Writing SVG label.stl")
             bd.export_stl(assembly, "label.stl")
             logger.info("Writing STEP label.step")
             export_step(assembly, "label.step")
-            if args.style == LabelStyle.EMBEDDED:
-                show_parts.append(part.part)
-                show_cols.append(None)
-                show_parts.append(embedded_or_embossed_label)
-                show_cols.append((0.2, 0.2, 0.2))
+
+            if args.style != LabelStyle.DEBOSSED:
+                show(part.part, embedded_or_embossed_label, colors=[args.base_color, args.label_color])
             else:
                 # Split the base for display as two colours
-                top = part.part.split(
-                    Plane.XY if is_embossed else Plane.XY.offset(-args.depth),
-                    keep=Keep.TOP,
-                )
+                show_parts = []
+                show_cols = []
+                top = part.part.split(Plane.XY.offset(-args.depth), keep=Keep.TOP)
                 if top:
                     show_parts.append(top)
-                    show_cols.append((0.2, 0.2, 0.2))
+                    show_cols.append(args.base_color)
                 if args.base != "none":
                     bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
-                    if bottom.wrapped:
+                    if bottom:
                         show_parts.append(bottom)
-                        show_cols.append(None)
-
-        show(
-            *show_parts,
-            colors=show_cols,
-            # position=[0, -10, 10],
-            # target=[0, 0, 0],
-        )
-
+                        show_cols.append(args.label_color)
+                show(top, bottom, colors=show_cols)
 
 if __name__ == "__main__":
     run()
