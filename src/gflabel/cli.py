@@ -269,13 +269,13 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--base-color",
-        help="The name of a color used for rendering the base. Can be any of the recognized OCCT color names.",
+        help="The name of a color used for rendering the base. Can be any of the recognized OCCT color names. Default: %(default)s.",
         type=str,
         default="orange",
     )
     parser.add_argument(
         "--label-color",
-        help="The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style 'debossed'.",
+        help="The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style 'debossed' except for 'vscode' rendering. Default: %(default)s.",
         type=str,
         default="blue",
     )
@@ -444,7 +444,7 @@ def run(argv: list[str] | None = None):
             embedded_or_embossed_label.color = Color(args.label_color)
             assembly = Compound([part.part, embedded_or_embossed_label])
 
-    #assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
+    assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
     for output in args.output:
         if output.endswith(".stl"):
