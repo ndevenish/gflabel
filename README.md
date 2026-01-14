@@ -121,7 +121,7 @@ This is an example of a Tailor Box label using multiple columns, rows, and symbo
 gflabel tailorbox -w=5 "M3 {|} Bolts Nuts\nWashers\n{hexhead(hex)} {hexhead(torx)} {nut} {washer}"
 ```
 
-![](https://github.com/hartd92/gflabel/raw/refs/heads/readme_images/example_tailor.png)
+![](https://github.com/ndevenish/gflabel/raw/refs/heads/readme_images/example_tailor.png)
 
 ## Command Parameters
 
