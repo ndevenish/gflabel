@@ -461,8 +461,8 @@ def _fragment_circle(height: float, _maxsize: float) -> Sketch:
 def _fragment_tnut(height: float, _maxsize: float) -> Sketch:
     """T-slot nut."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
-        RectangleRounded(height*0.6, height, height/7)
-        Circle((height*0.4)/2, mode=Mode.SUBTRACT)
+        RectangleRounded(height * 0.6, height, height / 7)
+        Circle((height * 0.4) / 2, mode=Mode.SUBTRACT)
 
     return sketch.sketch
 
