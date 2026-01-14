@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import argparse
@@ -30,9 +29,7 @@ class TailorBoxBase(LabelBase):
     def __init__(self, args: argparse.Namespace):
         def _convert_u_to_mm(u: pint.Quantity):
             if args.width.magnitude not in {5}:
-                logger.error(
-                    "Tailor box only known for 5u boxes"
-                )
+                logger.error("Tailor box only known for 5u boxes")
                 sys.exit(1)
             return pint.Quantity(
                 {
@@ -40,7 +37,7 @@ class TailorBoxBase(LabelBase):
                 }[u.magnitude],
                 "mm",
             )
-        
+
         with unit_registry.context("u", fn=_convert_u_to_mm):
             width_mm = args.width.to("mm").magnitude
 
@@ -59,4 +56,4 @@ class TailorBoxBase(LabelBase):
             chamfer(part.faces().filter_by(Plane.XY).edges(), chamfer_d)
 
         self.part = part.part
-        self.area = Vector(width_mm - chamfer_d * 2, height_mm -chamfer_d *2)
+        self.area = Vector(width_mm - chamfer_d * 2, height_mm - chamfer_d * 2)

@@ -112,7 +112,15 @@ class BaseChoiceAction(argparse.Action):
         if values in deprecated_choices:
             values = deprecated_choices[values]
 
-        choices = ["pred", "plain", "none", "cullenect", "predbox", "tailorbox", "modern"]
+        choices = [
+            "pred",
+            "plain",
+            "none",
+            "cullenect",
+            "predbox",
+            "tailorbox",
+            "modern",
+        ]
 
         if values not in choices:
             # Allow prefix-only of choice name, as long as unambiguous
@@ -143,7 +151,7 @@ def base_name_to_subclass(name: str) -> type[LabelBase]:
         "modern": ModernBase,
         "pred": PredBase,
         "predbox": PredBoxBase,
-        "tailorbox":TailorBoxBase,
+        "tailorbox": TailorBoxBase,
         "plain": PlainBase,
         "none": NoneBase,
         None: NoneBase,
