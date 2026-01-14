@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class TailorBoxBase(LabelBase):
-    DEFAULT_WIDTH = 5
+    DEFAULT_WIDTH = pint.Quantity("5u")
     DEFAULT_WIDTH_UNIT = unit_registry.u
     DEFAULT_MARGIN = unit_registry.Quantity(3, "mm")
 
