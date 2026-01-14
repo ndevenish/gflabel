@@ -499,6 +499,7 @@ class BoltBase(Fragment):
         self.partial = "partial" in self.modifiers
         features -= self.MODIFIERS
 
+        features = {DRIVE_ALIASES.get(x.lower(), x.lower()) for x in features}
         # Drives is everything left
         self.drives = features
 
