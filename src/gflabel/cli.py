@@ -31,6 +31,7 @@ from build123d import (
     Mode,
     Plane,
     RectangleRounded,
+    Shell, Face,
     Vector,
     add,
     export_step,
@@ -384,20 +385,44 @@ def run(argv: list[str] | None = None):
                 X=args.width.to("mm").magnitude, Y=args.height.to("mm").magnitude
             )
 
+        # build123d makes it really hard to preserve the color
+        # attribute of things, so we keep separate bookkeeping for it
+        # (alas), which negates a lot of the convenient stuff that
+        # build123d otherwise does for us w/r/t locations. We keep a
+        # separate list of Faces and their locations. The locations
+        # have to get adjusted at each level of the render logic so
+        # that they ultimately provide global coordinates instead of
+        # local coordinates. Location of faces is tracked as the
+        # non-standard attribute "lokation" because something in
+        # build123d automatically adjusts the "location" attribute
+        # somehow.
+        #
+        # The original all-in-one Sketch logic is preserved, which is
+        # more elegant if you don't care about {color()} fragments
+        # within a label spec.
+
         body_locations = []
+        colored_faces = []
         with BuildSketch(mode=Mode.PRIVATE) as label_sketch:
             all_labels = []
             for labels in batched(args.labels, args.divisions):
                 body_locations.append((0, y))
                 try:
+                    local_colored_faces = []
                     all_labels.append(
                         render_divided_label(
                             labels,
                             label_area,
+                            default_color=args.label_color,
+                            colored_faces=local_colored_faces,
                             divisions=args.divisions,
                             options=options,
                         ).locate(Location([0, y]))
                     )
+                    for face in local_colored_faces:
+                        face.lokation = Location((face.lokation.position.X, face.lokation.position.Y + y))
+                        colored_faces.append(face)
+
                 except fragments.InvalidFragmentSpecification as e:
                     rich.print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
                     sys.exit(1)
@@ -429,10 +454,18 @@ def run(argv: list[str] | None = None):
         if args.style == LabelStyle.DEBOSSED:
             assembly = Compound(children=[part.part])
         else:
-            embedded_or_embossed_label = extrude(label_sketch.sketch, amount=(args.depth if args.style == LabelStyle.EMBOSSED else -args.depth))
-            embedded_or_embossed_label.label = "Label"
-            embedded_or_embossed_label.color = Color(args.label_color)
-            assembly = Compound(children=[part.part, embedded_or_embossed_label])
+            child_list = [part.part]
+            facedex = 0
+            for face in colored_faces:
+                with BuildPart() as face_part:
+                    with Locations(face.lokation):
+                        extrude(face, amount=(args.depth if args.style == LabelStyle.EMBOSSED else -args.depth))
+                face_part.part.locate(face.lokation)
+                facedex += 1
+                face_part.part.label = "Label_" + str(facedex) + "_" + face.color_name
+                face_part.part.color = face.color
+                child_list.append(face_part.part)
+            assembly = Compound(children=child_list)
 
     for output in args.output:
         if output.endswith(".stl"):
@@ -468,7 +501,13 @@ def run(argv: list[str] | None = None):
             export_step(assembly, "label.step")
 
             if args.style != LabelStyle.DEBOSSED:
-                show(part.part, embedded_or_embossed_label, colors=[args.base_color, args.label_color])
+                part_list = []
+                color_list = []
+                for a in assembly.children:
+                    part_list.append(a)
+                    color_list.append(a.color)
+                show(*part_list, colors=color_list)
+
             else:
                 # Split the base for display as two colours
                 show_parts = []

@@ -9,9 +9,11 @@ import re
 
 from build123d import (
     BuildSketch,
+    Circle,
     Location,
     Locations,
     Mode,
+    Select,
     Sketch,
     Vector,
     add,
@@ -57,13 +59,14 @@ class LabelRenderer:
     def __init__(self, options: RenderOptions):
         self.opts = options
 
-    def render(self, spec: str, area: Vector) -> Sketch:
+    def render(self, spec: str, area: Vector, default_color: str, colored_faces: list(Face,str,Location)) -> Sketch:
         """
         Given a specification string, render a single label.
 
         Args:
             spec: The string representing the label.
             area: The width and height the label should be confined to.
+            default_color: The starting color to use until a color fragment is seen.
 
         Returns:
             A rendered Sketch object with the label contents, centered on
@@ -135,18 +138,23 @@ class LabelRenderer:
         with BuildSketch(mode=Mode.PRIVATE) as sketch:
             x = -area.X / 2
             for column_spec, width in zip(columns, column_widths):
-                add(
-                    self._do_multiline_render(
-                        column_spec, Vector(X=width, Y=area.Y)
-                    ).locate(Location((x + (width / 2), 0)))
-                )
+                local_colored_faces = []
+                xy = Location(((x + (width / 2), 0)))
+                add(self._do_multiline_render(
+                        column_spec, Vector(X=width, Y=area.Y), default_color=default_color, colored_faces=local_colored_faces
+                    ).locate(xy)
+                    )
                 x += width + self.opts.column_gap
+                for face in local_colored_faces:
+                    fxy = Location(((face.lokation.position.X + xy.position.X), (face.lokation.position.Y + xy.position.Y)))
+                    face.lokation = fxy
+                    colored_faces.append(face)
 
         return sketch.sketch
         # return self._do_multiline_render(spec, area)
 
     def _do_multiline_render(
-        self, spec: str, area: Vector, is_rescaling: bool = False
+        self, spec: str, area: Vector, default_color: str, colored_faces: list(Face,str,Location), is_rescaling: bool = False
     ) -> Sketch:
         """Label render function, with ability to recurse."""
         lines = spec.splitlines()
@@ -156,10 +164,9 @@ class LabelRenderer:
         if not lines:
             raise ValueError("Asked to render empty label")
 
-        row_height = (area.Y - (self.opts.line_spacing_mm * (len(lines) - 1))) / len(
-            lines
-        )
+        row_height = (area.Y - (self.opts.line_spacing_mm * (len(lines) - 1))) / len(lines)
 
+        first_try_colored_faces = []
         with BuildSketch() as sketch:
             # Render each line onto the sketch separately
             for n, line in enumerate(lines):
@@ -174,14 +181,21 @@ class LabelRenderer:
                 )
                 logger.info(f'Rendering line {n+1} ("{line}")')
                 IndentingRichHandler.indent()
-                with Locations([(0, render_y)]):
-                    add(
-                        self._render_single_line(
-                            line,
-                            Vector(X=area.X, Y=row_height),
-                            self.opts.allow_overheight,
-                        )
+                local_colored_faces = []
+                xy = Location((0, render_y))
+                with Locations([xy]):
+                    sl_sketch = self._render_single_line(
+                        line,
+                        Vector(X=area.X, Y=row_height),
+                        default_color=default_color,
+                        allow_overheight=self.opts.allow_overheight,
+                        colored_faces=local_colored_faces,
                     )
+                    add(sl_sketch)
+                    for face in local_colored_faces:
+                        fxy = Location(((face.lokation.position.X + xy.position.X), (face.lokation.position.Y + xy.position.Y)))
+                        face.lokation = fxy
+                        first_try_colored_faces.append(face)
                 IndentingRichHandler.dedent()
 
         scale_to_maxwidth = area.X / sketch.sketch.bounding_box().size.X
@@ -207,9 +221,14 @@ class LabelRenderer:
             # to scale down THAT height, instead of the "total available" height
             height_to_scale = min(area.Y, sketch.sketch.bounding_box().size.Y)
 
+            # these locations don't need adjustment because that's handled within
+            # the recursive call to this method
+            second_try_colored_faces = []
             second_try = self._do_multiline_render(
                 spec,
                 Vector(X=area.X, Y=height_to_scale * to_scale * 0.95),
+                default_color,
+                colored_faces=second_try_colored_faces,
                 is_rescaling=True,
             )
             # If this didn't help, then error
@@ -224,15 +243,17 @@ class LabelRenderer:
             print(
                 f'Entry "{print_spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {area.X})'
             )
+            colored_faces.extend(second_try_colored_faces)
             return second_try
         print(
             f'Entry "{spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {area.X})'
         )
 
+        colored_faces.extend(first_try_colored_faces)
         return sketch.sketch
 
     def _render_single_line(
-        self, line: str, area: Vector, allow_overheight: bool
+            self, line: str, area: Vector, default_color: str, colored_faces: list(Face,str,Location), allow_overheight: bool
     ) -> Sketch:
         """
         Render a single line of a labelspec.
@@ -295,21 +316,31 @@ class LabelRenderer:
         if total_width > area.X:
             logger.warning("Overfull Hbox: Label is wider than available area")
 
+        current_color = default_color
         # Assemble these onto the target
         with BuildSketch() as sketch:
             x = -total_width / 2
             for fragment, frag_sketch in [(x, rendered[x]) for x in frags]:
-                fragment_width = frag_sketch.bounding_box().size.X
-                with Locations((x + fragment_width / 2, 0)):
-                    if fragment.visible:
-                        add(frag_sketch)
-                x += fragment_width
+                if isinstance(fragment, fragments.ColorFragment):
+                    logger.info(f"Switching to color '{fragment.color}'")
+                    current_color = fragment.color
+                else:
+                    fragment_width = frag_sketch.bounding_box().size.X
+                    fxy = Location(((x + fragment_width / 2, 0)))
+                    with Locations(fxy):
+                        if fragment.visible:
+                            add(frag_sketch)
+                            for face in frag_sketch.faces():
+                                face.color = current_color
+                                face.color_name = current_color  # can't get the name back out of a Color object
+                                face.lokation = fxy
+                                colored_faces.append(face)
+                    x += fragment_width
 
         return sketch.sketch
 
-
 def render_divided_label(
-    labels: str, area: Vector, divisions: int, options: RenderOptions
+    labels: str, area: Vector, divisions: int, options: RenderOptions, default_color: str, colored_faces: list[(Face,str,Location)]
 ) -> Sketch:
     """
     Create a sketch for multiple labels fitted into a single area
@@ -320,8 +351,14 @@ def render_divided_label(
     renderer = LabelRenderer(options)
     with BuildSketch() as sketch:
         for i, label in enumerate(labels):
-            with Locations([(leftmost_label_x + i * area_per_label.X, 0)]):
+            local_colored_faces = []
+            xy = Location(((leftmost_label_x + i * area_per_label.X, 0)))
+            with Locations([xy]):
                 if label.strip():
-                    add(renderer.render(label, area_per_label))
+                    add(renderer.render(label, area_per_label, default_color=default_color, colored_faces=local_colored_faces))
+                    for face in local_colored_faces:
+                        fxy = Location(((face.lokation.position.X + xy.position.X), (face.lokation.position.Y + xy.position.Y)))
+                        face.lokation = fxy
+                        colored_faces.append(face)
 
     return sketch.sketch
