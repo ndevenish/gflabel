@@ -1135,7 +1135,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
         matches = _match_electronic_symbol_from_standard(standards_order, matches)
         if len(matches) == 1:
             logger.debug(
-                f"Using symbol \"{matches[0]['id']}\" because standard [b]{matches[0]['standard']}[/b] is preferred.",
+                f'Using symbol "{matches[0]["id"]}" because standard [b]{matches[0]["standard"]}[/b] is preferred.',
                 extra={"markup": True},
             )
             return matches[0]
@@ -1146,7 +1146,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
     if matches:
         cols = ["ID", "Category", "Name", "Standard", "Filename"]
         logger.error(
-            f"Could not decide on symbol from fuzzy specification \"{','.join(requested)}\". Possible options:"
+            f'Could not decide on symbol from fuzzy specification "{",".join(requested)}". Possible options:'
             + "\n"
             + "\n".join(
                 format_table(cols, matches, lambda x: x.lower(), prefix="    ")
@@ -1155,7 +1155,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
         )
     else:
         logger.error(
-            f"No electronic symbols matched the specification \"{','.join(requested)}\""
+            f'No electronic symbols matched the specification "{",".join(requested)}"'
         )
     raise InvalidFragmentSpecification("Please specify symbol more precisely.")
 

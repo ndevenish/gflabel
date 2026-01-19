@@ -89,7 +89,7 @@ class ModernBase(LabelBase):
 
         if LABEL_DEPTH >= H_mm / 2 or LABEL_DEPTH >= W_mm / 2:
             raise ValueError(
-                f"Error: Cannot have label depth ({LABEL_DEPTH:.1f} mm) being greater than half the width ({W_mm/2:.1f} mm) or height ({H_mm/2:.1f} mm)"
+                f"Error: Cannot have label depth ({LABEL_DEPTH:.1f} mm) being greater than half the width ({W_mm / 2:.1f} mm) or height ({H_mm / 2:.1f} mm)"
             )
 
         # Label constructed by angled extrusion of inner sketch

@@ -104,9 +104,9 @@ class RenderOptions(NamedTuple):
                     "Got non-length dimension pint quantity for args.margin"
                 )
             margin_mm = args.margin.to("mm").magnitude
-        assert (
-            margin_mm is not None
-        ), "Margin should have been set either by user or defaults"
+        assert margin_mm is not None, (
+            "Margin should have been set either by user or defaults"
+        )
         return cls(
             margin_mm=margin_mm,
             font=FontOptions(
