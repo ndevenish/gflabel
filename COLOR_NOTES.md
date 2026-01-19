@@ -61,7 +61,7 @@ Nobody is likely to have more than a few colors when 3D printing labels,
 but there is no enforced limit.
 Here's a slightly more complicated example:
 
-> gflabel --style embossed pred '{washer} R O Y G B I V {nut} {color(chartreuse)}{washer}' '{color(red)}R {color(orange)}O {color(yellow)}Y {color(green)}G {color(blue)}B {color(indigo)}I {color(violet)}V {color(chartreuse)}{nut}' --vscode
+> gflabel --style embossed pred '{washer} R O Y G B I V {nut}' '{color(chartreuse)}{washer} {color(red)}R {color(orange)}O {color(yellow)}Y {color(green)}G {color(blue)}B {color(indigo)}I {color(violet)}V {color(chartreuse)}{nut}' --vscode
 
 <img width="1419" height="809" alt="roygbiv" src="https://github.com/user-attachments/assets/962f8158-b1f4-4851-8796-0e1384306065" />
 
