@@ -87,7 +87,7 @@ Here is one of the `{measure}` examples from the README:
 There is one side effect that you might not expect.
 If you change the color inside a text fragment, 
 the spacing is likely to be affected.
-It's because rendering an uninterrupted text fragment is down
+It's because rendering an uninterrupted text fragment is done
 with the assistance of low-level font handling code.
 When that same piece of text is broken into two or more
 pieces, the spacing between them is handled directly by
