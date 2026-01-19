@@ -42,8 +42,6 @@ Since those are just color names and not specific filaments,
 Bambu Studio will prompt you to map the colors to filaments
 when you try to send the sliced model to the 3D printer.
 
-- bs 3MF
-
 If you open one of those OBJ files
 (and its accompanying MTL file)
 in Bambu Studio, you are immediately prompted to confirm or modify
@@ -51,15 +49,13 @@ the color mapping choices it has made.
 But, again, you must map the colors to specific filaments
 when you try to send the sliced model to the 3D printer.
 
-- bs OBJ
-
 ## Examples
 
 Here is a very simple example:
 
 > gflabel --style embossed pred 'R{|}G{|}B' '{color(red)}R{|}{color(green)}G{|}{color(blue)}B' --vscode
 
-- RGB
+<img width="1425" height="808" alt="rgb" src="https://github.com/user-attachments/assets/bdf9bc30-611a-4821-ae2b-b6b599f9f24a" />
 
 Nobody is likely to have more than a few colors when 3D printing labels,
 but there is no enforced limit.
@@ -67,26 +63,26 @@ Here's a slightly more complicated example:
 
 > gflabel --style embossed pred '{washer} R O Y G B I V {nut} {color(chartreuse)}{washer}' '{color(red)}R {color(orange)}O {color(yellow)}Y {color(green)}G {color(blue)}B {color(indigo)}I {color(violet)}V {color(chartreuse)}{nut}' --vscode
 
-- ROYGBIV
+<img width="1419" height="809" alt="roygbiv" src="https://github.com/user-attachments/assets/962f8158-b1f4-4851-8796-0e1384306065" />
 
 This is an example of a divided label:
 
 > gflabel --style embossed pred '{<}I used to\nbe an\nadventurer\nlike you,{|}{variable_resistor}{|}{<}but\nthen....' '{<}I used to\nbe an\nadventurer\nlike you,{|}{color(red)}{variable_resistor}{|}{<}but\nthen....' --vscode
 
-- adventurer
+<img width="1431" height="792" alt="adventurer" src="https://github.com/user-attachments/assets/0a64d9da-2006-4b1f-9e1d-4c65d6007da8" />
 
 Another example:
 
 > gflabel --style embossed pred 'Danger! {head(triangle)}' '{color(red)}Danger! {color(black)}{head(triangle)}' --vscode
 
-- danger
+<img width="1425" height="814" alt="danger" src="https://github.com/user-attachments/assets/ae580ace-a1fc-4b2b-acdd-76f9ecee2502" />
 
 The color fragment should work properly with all of the other fragment types since there is no nesting.
 Here is one of the `{measure}` examples from the README:
 
 > gflabel predbox -w=5 'A\n{measure}{4|}B\n{measure}{1|2}C\n{measure}' 'A\n{color(white)}{measure}{4|}B\n{color(chartreuse)}{measure}{1|2}C\n{color(pink)}{measure}' --vscode
 
-- measure
+<img width="1439" height="914" alt="measure" src="https://github.com/user-attachments/assets/9571c2fd-d5ed-45e5-a8fd-9e503303d23f" />
 
 There is one side effect that you might not expect.
 If you change the color inside a text fragment, 
@@ -99,4 +95,5 @@ the `gflabel` code.
 
 > gflabel --style embossed pred 'WWW' 'W{color(blue)}W{color(blue)}W' --vscode
 
-- www
+<img width="1423" height="805" alt="www" src="https://github.com/user-attachments/assets/4bdbb5df-d27a-4af5-bfc1-009429fa0d60" />
+
