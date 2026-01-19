@@ -162,10 +162,10 @@ options:
   --style {embossed,debossed,embedded}
                         How the label contents are formed.
   --base-color BASE_COLOR
-                        The name of a color used for rendering the base. Can be any of the recognized OCCT color names. Default: %(default)s.
+                        The name of a color used for rendering the base. Can be any of the recognized OCCT color names.
   --label-color LABEL_COLOR
                         The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style
-                        'debossed' (except for 'vscode' rendering). Default: %(default)s.
+                        'debossed'.
   --list-fragments      List all available fragments.
   --list-symbols        List all available electronic symbols
   --label-gap LABEL_GAP
@@ -258,6 +258,7 @@ A list of all the fragments currently recognised:
 | bolt              | Variable length bolt, in the style of Printables pred-box labels.<br><br>If the requested bolt is longer than the available space, then the<br>bolt will be as large as possible with a broken thread. |
 | box               | Arbitrary width, height centered box. If height is not specified, will expand to row height. |
 | circle            | A filled circle.                                                  |
+| color             | Changes the color to be used for subsequent label fragments on a line (left to right). Every line starts with the default label color. See COLOR_NOTES.md
 | head              | Screw head with specifiable head-shape.                           |
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
