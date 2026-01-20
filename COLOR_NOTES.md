@@ -63,7 +63,7 @@ Here's a slightly more complicated example:
 
 > gflabel --style embossed pred '{washer} R O Y G B I V {nut}' '{color(chartreuse)}{washer} {color(red)}R {color(orange)}O {color(yellow)}Y {color(green)}G {color(blue)}B {color(indigo)}I {color(violet)}V {color(chartreuse)}{nut}' --vscode
 
-<img width="1419" height="809" alt="roygbiv" src="https://github.com/user-attachments/assets/962f8158-b1f4-4851-8796-0e1384306065" />
+<img width="1205" height="667" alt="image" src="https://github.com/user-attachments/assets/55b0a371-4f9d-49ad-8c9a-26ab936ce644" />
 
 This is an example of a divided label:
 
