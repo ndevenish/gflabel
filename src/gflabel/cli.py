@@ -37,6 +37,7 @@ from build123d import (
     export_step,
     export_stl,
     extrude,
+    scale,
 )
 
 from . import fragments
