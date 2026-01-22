@@ -1242,9 +1242,12 @@ class AlignmentFragment(Fragment):
         )
 
 
+class ModifierFragment(Fragment):
+    """This Fragment subclass is for fragments that make some kind of inline adjustment applicable to fragments that follow it. Each line of a label starts with defaults, as if no modifier fragment has yet been seen."""
+
 @fragment("color")
-class ColorFragment(Fragment):
-    """Changes the color to be used for subsequent label fragments on a line (left to right). Every line starts with the default label color."""
+class ColorFragment(ModifierFragment):
+    """Changes the color to be used for subsequent fragments on a line."""
 
     examples = ["{color(blue)}BLUE{color(green)}GREEN]"]
 

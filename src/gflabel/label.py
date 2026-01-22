@@ -8,26 +8,29 @@ import logging
 import re
 
 from build123d import (
+    BuildPart,
     BuildSketch,
-    Circle,
+    Compound,
     Location,
     Locations,
     Mode,
-    Select,
     Sketch,
     Vector,
     add,
+    extrude,
 )
 from rich import print
 
 from . import fragments
-from .options import RenderOptions
+from .options import RenderOptions, LabelStyle
 from .util import IndentingRichHandler, batched
 
 logger = logging.getLogger(__name__)
 
 RE_FRAGMENT = re.compile(r"((?<!{){[^{}]+})")
 
+# We extrude fragments into Parts at the very lowest level. We
+# aggregate them into Compounds (with children) move up the stack.
 
 def _spec_to_fragments(spec: str) -> list[fragments.Fragment]:
     """Convert a single line spec string to a list of renderable fragments."""
@@ -59,17 +62,16 @@ class LabelRenderer:
     def __init__(self, options: RenderOptions):
         self.opts = options
 
-    def render(self, spec: str, area: Vector, default_color: str, colored_faces: list(Face,str,Location)) -> Sketch:
+    def render(self, spec: str, area: Vector) -> Compound:
         """
         Given a specification string, render a single label.
 
         Args:
             spec: The string representing the label.
             area: The width and height the label should be confined to.
-            default_color: The starting color to use until a color fragment is seen.
 
         Returns:
-            A rendered Sketch object with the label contents, centered on
+            A rendered Compound object with the label contents, centered on
             the origin.
         """
         # Area splitting
@@ -135,27 +137,22 @@ class LabelRenderer:
         logger.debug(f"{column_widths=}")
         logger.debug(f"{column_proportions=}")
 
-        with BuildSketch(mode=Mode.PRIVATE) as sketch:
-            x = -area.X / 2
-            for column_spec, width in zip(columns, column_widths):
-                local_colored_faces = []
-                xy = Location(((x + (width / 2), 0)))
-                add(self._do_multiline_render(
-                        column_spec, Vector(X=width, Y=area.Y), default_color=default_color, colored_faces=local_colored_faces
-                    ).locate(xy)
-                    )
-                x += width + self.opts.column_gap
-                for face in local_colored_faces:
-                    fxy = Location(((face.lokation.position.X + xy.position.X), (face.lokation.position.Y + xy.position.Y)))
-                    face.lokation = fxy
-                    colored_faces.append(face)
+        child_pcomps = []
+        x = -area.X / 2
+        for column_spec, width in zip(columns, column_widths):
+            xy = Location(((x + (width / 2), 0)))
+            with Locations([xy]):
+                  ch_pc = self._do_multiline_render(column_spec, Vector(X=width, Y=area.Y))
+                  ch_pc.locate(xy)
+                  ch_pc.label = "Multiline_" + str(len(child_pcomps)+1)
+                  child_pcomps.append(ch_pc)
+            x += width + self.opts.column_gap
 
-        return sketch.sketch
-        # return self._do_multiline_render(spec, area)
+        compound = Compound(children=child_pcomps)
+        return compound
 
     def _do_multiline_render(
-        self, spec: str, area: Vector, default_color: str, colored_faces: list(Face,str,Location), is_rescaling: bool = False
-    ) -> Sketch:
+        self, spec: str, area: Vector, is_rescaling: bool = False) -> Compound:
         """Label render function, with ability to recurse."""
         lines = spec.splitlines()
         if spec.endswith("\n"):
@@ -166,47 +163,43 @@ class LabelRenderer:
 
         row_height = (area.Y - (self.opts.line_spacing_mm * (len(lines) - 1))) / len(lines)
 
-        first_try_colored_faces = []
-        with BuildSketch() as sketch:
-            # Render each line onto the sketch separately
-            for n, line in enumerate(lines):
-                # Handle blank lines
-                if not line:
-                    continue
-                # Calculate the y of the line center
-                render_y = (
-                    area.Y / 2
-                    - (row_height + self.opts.line_spacing_mm) * n
-                    - row_height / 2
+        child_pcomps = []
+        # Render each line into the Compound separately
+        for n, line in enumerate(lines):
+            # Handle blank lines
+            if not line:
+                continue
+            # Calculate the y of the line center
+            render_y = (
+                area.Y / 2
+                - (row_height + self.opts.line_spacing_mm) * n
+                - row_height / 2
+            )
+            logger.info(f'Rendering line {n+1} ("{line}")')
+            IndentingRichHandler.indent()
+            xy = Location((0, render_y))
+            with Locations([xy]):
+                ch_pc = self._render_single_line(
+                    line,
+                    Vector(X=area.X, Y=row_height),
+                    allow_overheight=self.opts.allow_overheight,
                 )
-                logger.info(f'Rendering line {n+1} ("{line}")')
-                IndentingRichHandler.indent()
-                local_colored_faces = []
-                xy = Location((0, render_y))
-                with Locations([xy]):
-                    sl_sketch = self._render_single_line(
-                        line,
-                        Vector(X=area.X, Y=row_height),
-                        default_color=default_color,
-                        allow_overheight=self.opts.allow_overheight,
-                        colored_faces=local_colored_faces,
-                    )
-                    add(sl_sketch)
-                    for face in local_colored_faces:
-                        fxy = Location(((face.lokation.position.X + xy.position.X), (face.lokation.position.Y + xy.position.Y)))
-                        face.lokation = fxy
-                        first_try_colored_faces.append(face)
-                IndentingRichHandler.dedent()
+                ch_pc.locate(xy)
+                ch_pc.label = "Line_" + str(len(child_pcomps)+1)
+                child_pcomps.append(ch_pc)
+            IndentingRichHandler.dedent()
 
-        scale_to_maxwidth = area.X / sketch.sketch.bounding_box().size.X
-        scale_to_maxheight = area.Y / sketch.sketch.bounding_box().size.Y
+        ml_compound = Compound(children=child_pcomps)
+        bbox = ml_compound.bounding_box()
+        scale_to_maxwidth = area.X / bbox.size.X
+        scale_to_maxheight = area.Y / bbox.size.Y
 
         if scale_to_maxheight < 1 - 1e3:
             print(
                 f"Vertical scale is too high for area ({scale_to_maxheight}); downscaling"
             )
         to_scale = min(scale_to_maxheight, scale_to_maxwidth, 1)
-        print(f"Got scale: {to_scale}")
+        print("Got scale: " + str(to_scale))
         if to_scale < 0.99 and not is_rescaling:
             print(f"Rescaling as {scale_to_maxwidth}")
             # We need to scale this down. Resort to adjusting the height and re-requesting.
@@ -219,16 +212,11 @@ class LabelRenderer:
 
             # If we had an area that didn't fill the whole height, then we need
             # to scale down THAT height, instead of the "total available" height
-            height_to_scale = min(area.Y, sketch.sketch.bounding_box().size.Y)
+            height_to_scale = min(area.Y, bbox.size.Y)
 
-            # these locations don't need adjustment because that's handled within
-            # the recursive call to this method
-            second_try_colored_faces = []
             second_try = self._do_multiline_render(
                 spec,
                 Vector(X=area.X, Y=height_to_scale * to_scale * 0.95),
-                default_color,
-                colored_faces=second_try_colored_faces,
                 is_rescaling=True,
             )
             # If this didn't help, then error
@@ -241,25 +229,50 @@ class LabelRenderer:
                 )
             print_spec = spec.replace("\n", "\\n")
             print(
-                f'Entry "{print_spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {area.X})'
+                f'Entry "{print_spec}" calculated width = {bbox.size.X:.1f} (max {area.X})'
             )
-            colored_faces.extend(second_try_colored_faces)
             return second_try
         print(
-            f'Entry "{spec}" calculated width = {sketch.sketch.bounding_box().size.X:.1f} (max {area.X})'
+            f'Entry "{spec}" calculated width = {bbox.size.X:.1f} (max {area.X})'
         )
 
-        colored_faces.extend(first_try_colored_faces)
-        return sketch.sketch
+        return ml_compound
 
     def _render_single_line(
-            self, line: str, area: Vector, default_color: str, colored_faces: list(Face,str,Location), allow_overheight: bool
-    ) -> Sketch:
+        self, line: str, area: Vector, allow_overheight: bool) -> Compound:
         """
         Render a single line of a labelspec.
         """
         # Firstly, split the line into a set of fragment objects
         frags = _spec_to_fragments(line)
+
+        # Now pre-process the modifier fragments and record stuff into
+        # a dictionary for later use; those modifier fragments are
+        # removed from the list of fragments
+
+        # For modifier fragments, the change needs to happen
+        # in this loop so that fragment order is preserved.
+        # If you need to reference something later, when the
+        # Sketch is extruded into a Part (which is pretty
+        # likely!), a good technique is to store info as
+        # entries in the fragment_data dictionary that gets
+        # attached to the Fragment object
+
+        current_color = self.opts.default_color
+        renderable_frags = []
+        for frag in frags:
+            if isinstance(frag, fragments.ModifierFragment):
+
+                if isinstance(frag, fragments.ColorFragment):
+                    logger.info(f"Switching to color '{frag.color}'")
+                    current_color = frag.color
+
+            else:
+                fragment_data = {}
+                fragment_data["color"] = current_color
+                frag.fragment_data = fragment_data
+                renderable_frags.append(frag)
+        frags = renderable_frags
 
         # Overheight fragments: Work out if we have any, so that we can
         # scale the total height such that they fit.
@@ -316,49 +329,54 @@ class LabelRenderer:
         if total_width > area.X:
             logger.warning("Overfull Hbox: Label is wider than available area")
 
-        current_color = default_color
+        child_parts = []
+        label_dict = {}
         # Assemble these onto the target
-        with BuildSketch() as sketch:
-            x = -total_width / 2
-            for fragment, frag_sketch in [(x, rendered[x]) for x in frags]:
-                if isinstance(fragment, fragments.ColorFragment):
-                    logger.info(f"Switching to color '{fragment.color}'")
-                    current_color = fragment.color
-                else:
-                    fragment_width = frag_sketch.bounding_box().size.X
-                    fxy = Location(((x + fragment_width / 2, 0)))
-                    with Locations(fxy):
-                        if fragment.visible:
-                            add(frag_sketch)
-                            for face in frag_sketch.faces():
-                                face.color = current_color
-                                face.color_name = current_color  # can't get the name back out of a Color object
-                                face.lokation = fxy
-                                colored_faces.append(face)
-                    x += fragment_width
+        x = -total_width / 2
+        for fragment, frag_sketch in [(x, rendered[x]) for x in frags]:
+            fragment_width = frag_sketch.bounding_box().size.X
+            fxy = Location(((x + fragment_width / 2, 0)))
+            with Locations(fxy):
+                if fragment.visible:
+                    with BuildPart(mode=Mode.PRIVATE) as child_bpart:
+                        # EMBOSSED gets raised, DEBOSSED and EMBEDDED get lowered
+                        extrude(frag_sketch, self.opts.depth if self.opts.label_style == LabelStyle.EMBOSSED else -self.opts.depth)
+                    child_part = child_bpart.part
+                    child_part.color = fragment.fragment_data["color"]
+                    child_part.locate(fxy)
+                    fragment_class_name = fragment.__class__.__name__
+                    child_part_label = fragment_class_name.removesuffix("Fragment").removesuffix("fragment")
+                    label_count = label_dict[child_part_label] if child_part_label in label_dict else 0
+                    label_count += 1
+                    label_dict[child_part_label] = label_count
+                    child_part_label += "_" + str(label_count)
+                    if child_part.color != self.opts.default_color:
+                        child_part_label += "__" + current_color
+                    child_part.label = child_part_label
+                    child_parts.append(child_part)
+            x += fragment_width
 
-        return sketch.sketch
-
+        sl_compound = Compound(children=child_parts)
+        return sl_compound
+        
 def render_divided_label(
-    labels: str, area: Vector, divisions: int, options: RenderOptions, default_color: str, colored_faces: list[(Face,str,Location)]
-) -> Sketch:
+    labels: str, area: Vector, divisions: int, options: RenderOptions) -> Compound:
     """
-    Create a sketch for multiple labels fitted into a single area
+    Create a Compound for multiple labels fitted into a single area
     """
     area = Vector(X=area.X - options.margin_mm * 2, Y=area.Y - options.margin_mm * 2)
     area_per_label = Vector(area.X / divisions, area.Y)
     leftmost_label_x = -area.X / 2 + area_per_label.X / 2
     renderer = LabelRenderer(options)
-    with BuildSketch() as sketch:
-        for i, label in enumerate(labels):
-            local_colored_faces = []
-            xy = Location(((leftmost_label_x + i * area_per_label.X, 0)))
-            with Locations([xy]):
-                if label.strip():
-                    add(renderer.render(label, area_per_label, default_color=default_color, colored_faces=local_colored_faces))
-                    for face in local_colored_faces:
-                        fxy = Location(((face.lokation.position.X + xy.position.X), (face.lokation.position.Y + xy.position.Y)))
-                        face.lokation = fxy
-                        colored_faces.append(face)
+    child_pcomps = []
+    for i, label in enumerate(labels):
+        xy = Location(((leftmost_label_x + i * area_per_label.X, 0)))
+        with Locations([xy]):
+            if label.strip():
+                ch_pc = renderer.render(label, area_per_label)
+                ch_pc.locate(xy)
+                ch_pc.label = "Division_" + str(len(child_pcomps)+1)
+                child_pcomps.append(ch_pc)
 
-    return sketch.sketch
+    div_compound = Compound(children=child_pcomps)
+    return div_compound
