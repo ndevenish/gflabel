@@ -327,6 +327,14 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
     )
+    parser.add_argument(
+        "--xscale", help="Scale factor for entire label on the X axis", default=1.0, type=float
+    )
+    parser.add_argument(
+        "--yscale", help="Scale factor for entire label on the Y axis", default=1.0, type=float
+    )
+    parser.add_argument(
+        "--zscale", help="Scale factor for entire label on the Z axis", default=1.0, type=float
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     parser.add_argument(
@@ -468,6 +476,10 @@ def run(argv: list[str] | None = None):
             assembly = Compound(children=[base_part, label_compound])
         base_part.label = "Base"
         base_part.color = Color(args.base_color)
+
+    if args.xscale != 1.0 or args.yscale != 1.0 or args.zscale != 1.0:
+        logger.info(f"Scaling overall label by ({args.xscale}, {args.yscale}, {args.zscale})")
+        assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
     for output in args.output:
         if output.endswith(".stl"):
