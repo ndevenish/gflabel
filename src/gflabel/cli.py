@@ -335,6 +335,7 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--zscale", help="Scale factor for entire label on the Z axis", default=1.0, type=float
+    )
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     parser.add_argument(
