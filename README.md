@@ -122,8 +122,8 @@ The full command parameter usage (as generate by `gflabel --help`):
 ```
 usage: gflabel [-h] [--vscode] [-w WIDTH] [--height HEIGHT] [--label-depth DEPTH] [--depth DEPTH_MM] [--no-overheight] [-d DIVISIONS] [--font FONT]
                [--font-size-maximum FONT_SIZE_MAXIMUM | --font-size FONT_SIZE] [--font-style {regular,bold,italic,bolditalic}] [--font-path FONT_PATH]
-               [--margin MARGIN] [-o OUTPUT] [--style {embossed,debossed,embedded}] [--base-color BASE_COLOR] [--label-color LABEL_COLOR] [--list-fragments]
-               [--list-symbols] [--label-gap LABEL_GAP] [--column-gap COLUMN_GAP] [-v] [--version VERSION]
+               [--margin MARGIN] [-o OUTPUT] [--style {embossed,debossed,embedded}] [--base-color BASE_COLOR] [--label-color LABEL_COLOR] [--svg-mono]
+               [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP] [--column-gap COLUMN_GAP] [-v] [--version VERSION]
                BASE LABEL [LABEL ...]
 
 Generate gridfinity bin labels
@@ -162,10 +162,12 @@ options:
   --style {embossed,debossed,embedded}
                         How the label contents are formed.
   --base-color BASE_COLOR
-                        The name of a color used for rendering the base. Can be any of the recognized OCCT color names.
+                        The name of a color used for rendering the base. Can be any of the recognized CSS3 color names.
   --label-color LABEL_COLOR
-                        The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style
+                        The name of a color used for rendering the label contents. Can be any of the recognized CSS3 color names. Ignored for style
                         'debossed'.
+  --svg-mono            SVG files are normally produced with the same colors as the label contents. If you specify this argument, they are produced with label
+                        contents in the default label color.
   --list-fragments      List all available fragments.
   --list-symbols        List all available electronic symbols
   --label-gap LABEL_GAP
