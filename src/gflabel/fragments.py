@@ -21,6 +21,7 @@ from build123d import (
     BuildSketch,
     CenterArc,
     Circle,
+    Color,
     EllipticalCenterArc,
     GridLocations,
     Line,
@@ -1239,6 +1240,27 @@ class AlignmentFragment(Fragment):
         raise InvalidFragmentSpecification(
             "Got Alignment fragment ({<} or {>}) not at the start of a label; for selective alignment please pad with {...}, or specify alignment in column division."
         )
+
+
+class ModifierFragment(Fragment):
+    """This Fragment subclass is for fragments that make some kind of inline adjustment applicable to fragments that follow it. Each line of a label starts with defaults, as if no modifier fragment has yet been seen."""
+
+@fragment("color")
+class ColorFragment(ModifierFragment):
+    """Changes the color to be used for subsequent fragments on a line."""
+
+    examples = ["{color(blue)}BLUE{color(green)}GREEN]"]
+
+    def __init__(self, color_name: str):
+        self.color = color_name
+
+    visible = False
+    # a tiny, tiny circle for a microscopic bounding box, which in any case is invisible
+    # this eliminates some tedious special cases in single line processing
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        with BuildSketch() as sketch:
+            Circle(0.000000000001)
+        return sketch.sketch
 
 
 @fragment("magnet", examples=["{magnet}"])

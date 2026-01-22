@@ -21,7 +21,6 @@ from build123d import (
     BuildPart,
     BuildSketch,
     Color,
-    ColorIndex,
     Compound,
     ExportSVG,
     FontStyle,
@@ -29,11 +28,14 @@ from build123d import (
     Location,
     Locations,
     Mode,
+    Part,
     Plane,
     RectangleRounded,
+    Solid,
     Vector,
     add,
     export_step,
+    export_stl,
     extrude,
 )
 
@@ -154,6 +156,27 @@ def base_name_to_subclass(name: str) -> type[LabelBase]:
     return bases[name]
 
 
+def colored_parts(comp: Compound) -> list(Part):
+    """Walk the tree of comp to get a list of individual Part objects. Adjust their local locatons to globals along the way."""
+    part_list = []
+    for child in comp.children:
+        if isinstance(child, Part):
+            # we clone the part so that the move() calls don't modify things in place
+            clone = Part(child)
+            clone.label = child.label
+            clone.color = child.color
+            clone.move(comp.location)
+            part_list.append(clone)
+        elif isinstance(child, Compound):
+            child_part_list = colored_parts(child)
+            for child_part in child_part_list:
+                clone_part = Part(child_part)
+                clone_part.label = child_part.label
+                clone_part.color = child_part.color
+                clone_part.move(comp.location)
+                part_list.append(clone_part)
+    return part_list
+
 def run(argv: list[str] | None = None):
     # Handle the old way of specifying base
     if any((x.startswith("--base") and x != "--base-color") for x in (argv or sys.argv)):
@@ -268,15 +291,21 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--base-color",
-        help="The name of a color used for rendering the base. Can be any of the recognized OCCT color names.",
+        help="The name of a color used for rendering the base. Can be any of the recognized CSS3 color names.",
         type=str,
         default="orange",
     )
     parser.add_argument(
         "--label-color",
-        help="The name of a color used for rendering the label contents. Can be any of the recognized OCCT color names. Ignored for style 'debossed'.",
+        help="The name of a color used for rendering the label contents. Can be any of the recognized CSS3 color names. Ignored for style 'debossed'.",
         type=str,
         default="blue",
+    )
+    parser.add_argument(
+        "--svg-mono",
+        help="SVG files are normally produced with the same colors as the label contents. If you specify this argument, they are produced with label contents in the default label color.",
+        action="store_true",
+        default=False,
     )
     parser.add_argument(
         "--list-fragments",
@@ -367,7 +396,7 @@ def run(argv: list[str] | None = None):
     options = RenderOptions.from_args(args)
     logger.debug("Got render options: %s", options)
     body: LabelBase | None = None
-    with BuildPart() as part:
+    with BuildPart() as base_bpart:
         y = 0
         body = base_type(args)
 
@@ -385,31 +414,32 @@ def run(argv: list[str] | None = None):
             )
 
         body_locations = []
-        with BuildSketch(mode=Mode.PRIVATE) as label_sketch:
-            all_labels = []
-            for labels in batched(args.labels, args.divisions):
-                body_locations.append((0, y))
+        child_pcomps = []
+        batch_iter = batched(args.labels, args.divisions)
+        for ba in batch_iter:
+            labels = ba
+            xy = Location([0, y])
+            body_locations.append((0, y))
+            with Locations([xy]):
                 try:
-                    all_labels.append(
-                        render_divided_label(
+                    ch_pc = render_divided_label(
                             labels,
                             label_area,
                             divisions=args.divisions,
                             options=options,
-                        ).locate(Location([0, y]))
-                    )
+                        )
+                    ch_pc.locate(xy)
+                    ch_pc.label = "Label_" + str(len(child_pcomps)+1)
+                    child_pcomps.append(ch_pc)
+
                 except fragments.InvalidFragmentSpecification as e:
                     rich.print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
                     sys.exit(1)
-                y -= y_offset_each_label
-            logger.debug("Combining all labels")
-            add(all_labels)
+            y -= y_offset_each_label
 
-        if args.box and is_2d:
-            logger.debug("Generating label outline for --box")
-            with BuildSketch(mode=Mode.PRIVATE) as body_box:
-                with Locations(body_locations):
-                    add(RectangleRounded(label_area.X, label_area.Y, label_area.Y / 10))
+        label_compound = Compound(children=child_pcomps)
+        label_compound.label = "Label"
+        logger.debug(f"LABEL COMPOUND {label_compound}\n{label_compound.show_topology()}")
 
         if not is_2d:
             # Create all of the bases
@@ -418,67 +448,84 @@ def run(argv: list[str] | None = None):
                 with Locations(body_locations):
                     add(body.part)
 
-            logger.debug("Extruding labels")
-            if args.style == LabelStyle.DEBOSSED:
-                extrude(label_sketch.sketch, amount=-args.depth, mode=Mode.SUBTRACT)
+    if args.box and is_2d:
+        logger.debug("Generating label outline for --box")
+        with BuildSketch(mode=Mode.PRIVATE) as body_box_bsketch:
+            with Locations(body_locations):
+                RectangleRounded(label_area.X, label_area.Y, label_area.Y / 10)
+        body_box_sketch = body_box_bsketch.sketch
+
+    base_part = base_bpart.part
 
     if not is_2d:
-        part.part.label = "Base"
-        part.part.color = Color(args.base_color)
-
+        logger.debug(f"BASE PART {base_part}\n{base_part.show_topology()}")
         if args.style == LabelStyle.DEBOSSED:
-            assembly = Compound(children=[part.part])
+            # this produces "UserWarning: Unknown Compound type, color not set"; I don't know why
+            base_part -= label_compound
+            assembly = Compound(children=[base_part])
         else:
-            embedded_or_embossed_label = extrude(label_sketch.sketch, amount=(args.depth if args.style == LabelStyle.EMBOSSED else -args.depth))
-            embedded_or_embossed_label.label = "Label"
-            embedded_or_embossed_label.color = Color(args.label_color)
-            assembly = Compound(children=[part.part, embedded_or_embossed_label])
+            assembly = Compound(children=[base_part, label_compound])
+        base_part.label = "Base"
+        base_part.color = Color(args.base_color)
 
     for output in args.output:
         if output.endswith(".stl"):
             logger.info(f"Writing STL {output}")
-            bd.export_stl(assembly, output)
+            export_stl(assembly, output)
         elif output.endswith(".step"):
             logger.info(f"Writing STEP {output}")
             export_step(assembly, output)
         elif output.endswith(".svg"):
             max_dimension = max(
-                *label_sketch.sketch.bounding_box().size, label_area.X, label_area.Y
+                *label_compound.bounding_box().size, label_area.X, label_area.Y
             )
             exporter = ExportSVG(scale=100 / max_dimension)
-            exporter.add_layer("Shapes", fill_color=Color(args.label_color), line_weight=0)
 
             if args.box and is_2d:
-                exporter.add_layer("Box", line_weight=1)
-                exporter.add_shape(body_box.sketch, layer="Box")
+                exporter.add_layer("Box", line_color=Color(args.base_color), line_weight=1)
+                exporter.add_shape(body_box_sketch, layer="Box")
+            if args.svg_mono:
+                exporter.add_layer("Shapes", fill_color=Color(args.label_color), line_weight=0)
+                compound_in_plane = label_compound.intersect(Plane.XY)
+                exporter.add_shape(compound_in_plane, layer="Shapes")
+            else:
+                layer_dict = {}
+                for pdex, part in enumerate(colored_parts(label_compound)):
+                    color = part.color
+                    color_str = str(color)
+                    if not color_str in layer_dict:
+                        exporter.add_layer(name=color_str, fill_color=color, line_weight=0)
+                        layer_dict[color_str] = True
+                    part_in_plane = part.intersect(Plane.XY)
+                    exporter.add_shape(part_in_plane, layer=color_str)
             logger.info(f"Writing SVG {output}")
-            exporter.add_shape(label_sketch.sketch, layer="Shapes")
             exporter.write(output)
         else:
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
     if args.vscode:
         if is_2d:
-            show_parts.append(label_sketch.sketch)
+            show(label_compound)
         else:
             # Export both step and stl in vscode_ocp mode
-            logger.info("Writing SVG label.stl")
+            logger.info("Writing STL label.stl")
             bd.export_stl(assembly, "label.stl")
             logger.info("Writing STEP label.step")
             export_step(assembly, "label.step")
 
             if args.style != LabelStyle.DEBOSSED:
-                show(part.part, embedded_or_embossed_label, colors=[args.base_color, args.label_color])
+                # CAD viewer notices the Part colors
+                show(assembly)
             else:
                 # Split the base for display as two colours
                 show_parts = []
                 show_cols = []
-                top = part.part.split(Plane.XY.offset(-args.depth), keep=Keep.TOP)
+                top = base_part.split(Plane.XY.offset(-args.depth), keep=Keep.TOP)
                 if top:
                     show_parts.append(top)
                     show_cols.append(args.base_color)
                 if args.base != "none":
-                    bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
+                    bottom = base_part.split(Plane.XY, keep=Keep.BOTTOM)
                     if bottom:
                         show_parts.append(bottom)
                         show_cols.append(args.label_color)
