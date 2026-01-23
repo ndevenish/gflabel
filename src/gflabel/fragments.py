@@ -1258,7 +1258,7 @@ class ModifierFragment(Fragment):
 
 @fragment("color")
 class ColorFragment(ModifierFragment):
-    """Changes the color to be used for subsequent fragments on a line."""
+    """Changes the color to be used for subsequent fragments on a line. See COLOR_NOTES.md"""
 
     examples = ["{color(blue)}BLUE{color(green)}GREEN]"]
 
