@@ -405,8 +405,12 @@ def run(argv: list[str] | None = None):
         logger.info(f"Scaling overall label by ({args.xscale}, {args.yscale}, {args.zscale})")
         if args.width:
             args.width *= args.xscale
+        if args.margin:
+            args.margin *= args.xscale
         if args.height:
             args.height *= args.yscale
+        if args.depth:
+            args.depth *= args.zscale
         if body:
             if body.part:
                 body.part = scale(body.part, (args.xscale, args.yscale, args.zscale))
