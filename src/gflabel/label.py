@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import re
 
+from collections.abc import Callable
 from build123d import (
     BuildPart,
     BuildSketch,
@@ -32,13 +33,22 @@ RE_FRAGMENT = re.compile(r"((?<!{){[^{}]+})")
 # We extrude fragments into Parts at the very lowest level. We
 # aggregate them into Compounds (with children) move up the stack.
 
-def _spec_to_fragments(spec: str) -> list[fragments.Fragment]:
+def _spec_to_fragments(spec: str) -> tuple[list[fragments.Fragment], list[str]]:
     """Convert a single line spec string to a list of renderable fragments."""
     fragment_list = []
+    fragment_name_list = []
     for part in RE_FRAGMENT.split(spec):
         if part.startswith("{") and not part.startswith("{{") and part.endswith("}"):
             # We have a special fragment. Find and instantiate it.
-            fragment_list.append(fragments.fragment_from_spec(part[1:-1]))
+            fragment = fragments.fragment_from_spec(part[1:-1])
+            fragment_list.append(fragment)
+            if isinstance(fragment, fragments.FunctionalFragment):
+                fun_frag = fragment.fn
+                if isinstance(fun_frag, Callable):
+                    fragment_name_list.append(fun_frag.__name__.removeprefix("_fragment_"))
+            else:
+                fragment_name_list.append(fragment.__class__.__name__.removesuffix("Fragment").removesuffix("fragment"))
+
         else:
             # We have text. Build123d Text object doesn't handle leading/
             # trailing spaces, so let's split them out here and put in
@@ -47,15 +57,19 @@ def _spec_to_fragments(spec: str) -> list[fragments.Fragment]:
             left_spaces = part[: len(part) - len(part.lstrip())]
             if left_spaces:
                 fragment_list.append(fragments.WhitespaceFragment(left_spaces))
+                fragment_name_list.append("whitespace")
             part = part.lstrip()
 
             part_stripped = part.strip()
             if part_stripped:
                 fragment_list.append(fragments.TextFragment(part_stripped))
+                fragment_name_list.append(part_stripped)
 
             if chars := len(part) - len(part_stripped):
                 fragment_list.append(fragments.WhitespaceFragment(part[-chars:]))
-    return fragment_list
+                fragment_name_list.append("whitespace")
+
+    return fragment_list, fragment_name_list
 
 
 class LabelRenderer:
@@ -244,7 +258,7 @@ class LabelRenderer:
         Render a single line of a labelspec.
         """
         # Firstly, split the line into a set of fragment objects
-        frags = _spec_to_fragments(line)
+        frags, frag_names = _spec_to_fragments(line)
 
         # Now pre-process the modifier fragments and record stuff into
         # a dictionary for later use; those modifier fragments are
@@ -260,7 +274,7 @@ class LabelRenderer:
 
         current_color = self.opts.default_color
         renderable_frags = []
-        for frag in frags:
+        for fragdex, frag in enumerate(frags):
             if isinstance(frag, fragments.ModifierFragment):
 
                 if isinstance(frag, fragments.ColorFragment):
@@ -269,7 +283,8 @@ class LabelRenderer:
 
             else:
                 fragment_data = {}
-                fragment_data["color"] = current_color
+                fragment_data["color_name"] = current_color
+                fragment_data["fragment_name"] = frag_names[fragdex]
                 frag.fragment_data = fragment_data
                 renderable_frags.append(frag)
         frags = renderable_frags
@@ -342,16 +357,22 @@ class LabelRenderer:
                         # EMBOSSED gets raised, DEBOSSED and EMBEDDED get lowered
                         extrude(frag_sketch, self.opts.depth if self.opts.label_style == LabelStyle.EMBOSSED else -self.opts.depth)
                     child_part = child_bpart.part
-                    child_part.color = fragment.fragment_data["color"]
+                    child_part_color_name = fragment.fragment_data["color_name"]
+                    child_part.color = child_part_color_name
                     child_part.locate(fxy)
-                    fragment_class_name = fragment.__class__.__name__
-                    child_part_label = fragment_class_name.removesuffix("Fragment").removesuffix("fragment")
+                    clean_label = ""
+                    # Sanitize the label. Not for security, but just to hope that
+                    # any external tools don't freak out about labels they don't like.
+                    for char in fragment.fragment_data["fragment_name"]:
+                        if char.isalnum() or char == "_":
+                            clean_label += char
+                    child_part_label = clean_label if clean_label else "item"
                     label_count = label_dict[child_part_label] if child_part_label in label_dict else 0
                     label_count += 1
                     label_dict[child_part_label] = label_count
                     child_part_label += "_" + str(label_count)
                     if child_part.color != self.opts.default_color:
-                        child_part_label += "__" + current_color
+                        child_part_label += "__" + child_part_color_name
                     child_part.label = child_part_label
                     child_parts.append(child_part)
             x += fragment_width
