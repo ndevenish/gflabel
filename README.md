@@ -275,6 +275,7 @@ A list of all the fragments currently recognised:
 | measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
+| tnut              | T-slot nut.                                                       |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
 | washer            | Circular washer with a circular hole.                             |
 | cullbolt          | Alternate bolt representation incorporating screw drive, with fixed length, as used by the [Cullenect][cullenect] system. |
