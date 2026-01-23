@@ -292,13 +292,13 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--base-color",
-        help="The name of a color used for rendering the base. Can be any of the recognized CSS3 color names.",
+        help="The name of a color used for rendering the base. Can be any of the recognized CSS3 color names. Default: %(default)s",
         type=str,
         default="orange",
     )
     parser.add_argument(
         "--label-color",
-        help="The name of a color used for rendering the label contents. Can be any of the recognized CSS3 color names. Ignored for style 'debossed'.",
+        help="The name of a color used for rendering the label contents. Can be any of the recognized CSS3 color names. Ignored for style 'debossed'. Default: %(default)s",
         type=str,
         default="blue",
     )
@@ -328,13 +328,13 @@ def run(argv: list[str] | None = None):
         "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
     )
     parser.add_argument(
-        "--xscale", help="Scale factor for entire label on the X axis", default=1.0, type=float
+        "--xscale", help="Scale factor for entire label on the X axis. Default: %(default)s", default=1.0, type=float
     )
     parser.add_argument(
-        "--yscale", help="Scale factor for entire label on the Y axis", default=1.0, type=float
+        "--yscale", help="Scale factor for entire label on the Y axis. Default: %(default)s", default=1.0, type=float
     )
     parser.add_argument(
-        "--zscale", help="Scale factor for entire label on the Z axis", default=1.0, type=float
+        "--zscale", help="Scale factor for entire label on the Z axis. Default: %(default)s", default=1.0, type=float
     )
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
@@ -398,6 +398,25 @@ def run(argv: list[str] | None = None):
     elif args.margin is not pint.Quantity:
         args.margin = pint.Quantity(args.margin, unit_registry.mm)
 
+    body: LabelBase | None = None
+    body = base_type(args)
+
+    if args.xscale != 1.0 or args.yscale != 1.0 or args.zscale != 1.0:
+        logger.info(f"Scaling overall label by ({args.xscale}, {args.yscale}, {args.zscale})")
+        if args.width:
+            args.width *= args.xscale
+        if args.height:
+            args.height *= args.yscale
+        if body:
+            if body.part:
+                body.part = scale(body.part, (args.xscale, args.yscale, args.zscale))
+            if body.area:
+                body.area = Vector(args.xscale * body.area.X, args.yscale * body.area.Y)
+            if body.DEFAULT_WIDTH:
+                body.DEFAULT_WIDTH *= args.xscale
+            if body.DEFAULT_MARGIN:
+                body.DEFAULT_MARGIN *= args.xscale
+
     logger.info(f"Rendering label with width: {args.width}")
 
     args.divisions = args.divisions or len(args.labels)
@@ -405,14 +424,13 @@ def run(argv: list[str] | None = None):
 
     options = RenderOptions.from_args(args)
     logger.debug("Got render options: %s", options)
-    body: LabelBase | None = None
     with BuildPart() as base_bpart:
         y = 0
-        body = base_type(args)
 
         if body.part:
             y_offset_each_label = body.part.bounding_box().size.Y + args.label_gap
             label_area = body.area
+            
         else:
             # Only occurs if label type has no body e.g. "None"
             if args.height is None:
@@ -477,10 +495,6 @@ def run(argv: list[str] | None = None):
             assembly = Compound(children=[base_part, label_compound])
         base_part.label = "Base"
         base_part.color = Color(args.base_color)
-
-    if args.xscale != 1.0 or args.yscale != 1.0 or args.zscale != 1.0:
-        logger.info(f"Scaling overall label by ({args.xscale}, {args.yscale}, {args.zscale})")
-        assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
     for output in args.output:
         if output.endswith(".stl"):
