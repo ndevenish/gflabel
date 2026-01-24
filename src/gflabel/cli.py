@@ -47,9 +47,9 @@ from .bases.modern import ModernBase
 from .bases.none import NoneBase
 from .bases.plain import PlainBase
 from .bases.pred import PredBase, PredBoxBase
-from .label import render_divided_label
+from .label import render_collection_of_labels, clean_up_name
 from .options import LabelStyle, RenderOptions
-from .util import IndentingRichHandler, batched, unit_registry
+from .util import IndentingRichHandler, unit_registry
 
 logger = logging.getLogger(__name__)
 
@@ -400,7 +400,6 @@ def run(argv: list[str] | None = None):
 
     body: LabelBase | None = None
     body = base_type(args)
-
     if args.xscale != 1.0 or args.yscale != 1.0 or args.zscale != 1.0:
         logger.info(f"Scaling overall label by ({args.xscale}, {args.yscale}, {args.zscale})")
         if args.width:
@@ -429,8 +428,6 @@ def run(argv: list[str] | None = None):
     options = RenderOptions.from_args(args)
     logger.debug("Got render options: %s", options)
     with BuildPart() as base_bpart:
-        y = 0
-
         if body.part:
             y_offset_each_label = body.part.bounding_box().size.Y + args.label_gap
             label_area = body.area
@@ -445,34 +442,14 @@ def run(argv: list[str] | None = None):
                 X=args.width.to("mm").magnitude, Y=args.height.to("mm").magnitude
             )
 
+        labels_compound = render_collection_of_labels(args.labels, args.divisions, y_offset_each_label, options, label_area)
+
+        y = 0
         body_locations = []
-        child_pcomps = []
-        batch_iter = batched(args.labels, args.divisions)
-        for ba in batch_iter:
-            labels = ba
-            xy = Location([0, y])
+        for boddex in range(len(labels_compound.children)):
             body_locations.append((0, y))
-            with Locations([xy]):
-                try:
-                    ch_pc = render_divided_label(
-                            labels,
-                            label_area,
-                            divisions=args.divisions,
-                            options=options,
-                        )
-                    ch_pc.locate(xy)
-                    ch_pc.label = "Label_" + str(len(child_pcomps)+1)
-                    child_pcomps.append(ch_pc)
-
-                except fragments.InvalidFragmentSpecification as e:
-                    rich.print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
-                    sys.exit(1)
             y -= y_offset_each_label
-
-        label_compound = Compound(children=child_pcomps)
-        label_compound.label = "Label"
-        logger.debug(f"LABEL COMPOUND {label_compound}\n{label_compound.show_topology()}")
-
+            
         if not is_2d:
             # Create all of the bases
             if body.part:
@@ -493,11 +470,11 @@ def run(argv: list[str] | None = None):
         logger.debug(f"BASE PART {base_part}\n{base_part.show_topology()}")
         if args.style == LabelStyle.DEBOSSED:
             # this produces "UserWarning: Unknown Compound type, color not set"; I don't know why
-            base_part -= label_compound
+            base_part -= labels_compound
             assembly = Compound(children=[base_part])
         else:
-            assembly = Compound(children=[base_part, label_compound])
-        base_part.label = "Base"
+            assembly = Compound(children=[base_part, labels_compound])
+        base_part.label = clean_up_name("Base")
         base_part.color = Color(args.base_color)
 
     for output in args.output:
@@ -509,7 +486,7 @@ def run(argv: list[str] | None = None):
             export_step(assembly, output)
         elif output.endswith(".svg"):
             max_dimension = max(
-                *label_compound.bounding_box().size, label_area.X, label_area.Y
+                *labels_compound.bounding_box().size, label_area.X, label_area.Y
             )
             exporter = ExportSVG(scale=100 / max_dimension)
 
@@ -518,11 +495,11 @@ def run(argv: list[str] | None = None):
                 exporter.add_shape(body_box_sketch, layer="Box")
             if args.svg_mono:
                 exporter.add_layer("Shapes", fill_color=Color(args.label_color), line_weight=0)
-                compound_in_plane = label_compound.intersect(Plane.XY)
+                compound_in_plane = labels_compound.intersect(Plane.XY)
                 exporter.add_shape(compound_in_plane, layer="Shapes")
             else:
                 layer_dict = {}
-                for pdex, part in enumerate(colored_parts(label_compound)):
+                for pdex, part in enumerate(colored_parts(labels_compound)):
                     color = part.color
                     color_str = str(color)
                     if not color_str in layer_dict:
@@ -537,7 +514,7 @@ def run(argv: list[str] | None = None):
 
     if args.vscode:
         if is_2d:
-            show(label_compound)
+            show(labels_compound)
         else:
             # Export both step and stl in vscode_ocp mode
             logger.info("Writing STL label.stl")

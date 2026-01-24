@@ -15,12 +15,14 @@ from build123d import (
     Location,
     Locations,
     Mode,
+    Part,
     Sketch,
     Vector,
     add,
     extrude,
 )
 from rich import print
+from enum import Enum, auto
 
 from . import fragments
 from .options import RenderOptions, LabelStyle
@@ -30,8 +32,54 @@ logger = logging.getLogger(__name__)
 
 RE_FRAGMENT = re.compile(r"((?<!{){[^{}]+})")
 
+# The nesting of logic here is:
+#   Labels (overall collection from command line)
+#     Batch (via the "-d" command line option)
+#       Multiline (for possible embedded newlines)
+#         Lines
+#           Fragments (Part labels are computed from the fragment type)
+
 # We extrude fragments into Parts at the very lowest level. We
 # aggregate them into Compounds (with children) move up the stack.
+
+# This label dictionary is a global to try to give unique
+# labels in the entire batch of gflabels. Although unique,
+# some numbers might be discarded due to rescaling in the
+# rendering logic.
+label_dict: dict[str, int] = {}
+
+def get_global_label(candidate: str):
+    label_count = label_dict[candidate] if (candidate in label_dict) else 0
+    label_count += 1
+    label_dict[candidate] = label_count
+    unique = candidate + "_" + str(label_count)
+    return unique
+    
+def clean_up_name(dirty_name: str):
+    # Sanitize the label. Not for security, but just to hope that
+    # any external tools don't freak out about labels they don't like.
+    clean_name = ""
+    for char in dirty_name.removeprefix("_fragment_").removesuffix("Fragment").removesuffix("fragment"):
+        if char == " ":
+            char = "_"
+        if char.isascii() and (char.isalnum() or char in "_-"):
+            clean_name += char
+    if not clean_name[0].isalpha():
+        clean_name = "L" + clean_name
+    return clean_name
+
+class FragmentDataItem(Enum):
+    FRAGMENT_NAME = auto()
+    COLOR_NAME = auto()
+
+    @classmethod
+    def _missing_(cls, value):
+        for kind in cls:
+            if kind.name.lower() == value.lower():
+                return kind
+
+    def __str__(self):
+        return self.name.lower()
 
 def _spec_to_fragments(spec: str) -> tuple[list[fragments.Fragment], list[str]]:
     """Convert a single line spec string to a list of renderable fragments."""
@@ -45,9 +93,9 @@ def _spec_to_fragments(spec: str) -> tuple[list[fragments.Fragment], list[str]]:
             if isinstance(fragment, fragments.FunctionalFragment):
                 fun_frag = fragment.fn
                 if isinstance(fun_frag, Callable):
-                    fragment_name_list.append(fun_frag.__name__.removeprefix("_fragment_"))
+                    fragment_name_list.append(clean_up_name(fun_frag.__name__))
             else:
-                fragment_name_list.append(fragment.__class__.__name__.removesuffix("Fragment").removesuffix("fragment"))
+                fragment_name_list.append(clean_up_name(fragment.__class__.__name__))
 
         else:
             # We have text. Build123d Text object doesn't handle leading/
@@ -57,26 +105,24 @@ def _spec_to_fragments(spec: str) -> tuple[list[fragments.Fragment], list[str]]:
             left_spaces = part[: len(part) - len(part.lstrip())]
             if left_spaces:
                 fragment_list.append(fragments.WhitespaceFragment(left_spaces))
-                fragment_name_list.append("whitespace")
+                fragment_name_list.append(clean_up_name(fragments.WhitespaceFragment.__name__))
             part = part.lstrip()
 
             part_stripped = part.strip()
             if part_stripped:
                 fragment_list.append(fragments.TextFragment(part_stripped))
-                fragment_name_list.append(part_stripped)
+                fragment_name_list.append(clean_up_name(part_stripped))
 
             if chars := len(part) - len(part_stripped):
                 fragment_list.append(fragments.WhitespaceFragment(part[-chars:]))
-                fragment_name_list.append("whitespace")
-
+                fragment_name_list.append(clean_up_name(fragments.WhitespaceFragment.__name__))
     return fragment_list, fragment_name_list
-
 
 class LabelRenderer:
     def __init__(self, options: RenderOptions):
         self.opts = options
 
-    def render(self, spec: str, area: Vector) -> Compound:
+    def render_batch(self, spec: str, area: Vector) -> Compound:
         """
         Given a specification string, render a single label.
 
@@ -158,12 +204,12 @@ class LabelRenderer:
             with Locations([xy]):
                   ch_pc = self._do_multiline_render(column_spec, Vector(X=width, Y=area.Y))
                   ch_pc.locate(xy)
-                  ch_pc.label = "Multiline_" + str(len(child_pcomps)+1)
                   child_pcomps.append(ch_pc)
             x += width + self.opts.column_gap
 
-        compound = Compound(children=child_pcomps)
-        return compound
+        batch_compound = Compound(children=child_pcomps)
+        batch_compound.label = clean_up_name(get_global_label("Batch"))
+        return batch_compound
 
     def _do_multiline_render(
         self, spec: str, area: Vector, is_rescaling: bool = False) -> Compound:
@@ -198,12 +244,14 @@ class LabelRenderer:
                     Vector(X=area.X, Y=row_height),
                     allow_overheight=self.opts.allow_overheight,
                 )
+                ch_pc.label = clean_up_name(get_global_label("Line"))
                 ch_pc.locate(xy)
-                ch_pc.label = "Line_" + str(len(child_pcomps)+1)
                 child_pcomps.append(ch_pc)
             IndentingRichHandler.dedent()
 
         ml_compound = Compound(children=child_pcomps)
+        ml_compound.label = clean_up_name(get_global_label("Multiline"))
+
         bbox = ml_compound.bounding_box()
         scale_to_maxwidth = area.X / bbox.size.X
         scale_to_maxheight = area.Y / bbox.size.Y
@@ -283,8 +331,8 @@ class LabelRenderer:
 
             else:
                 fragment_data = {}
-                fragment_data["color_name"] = current_color
-                fragment_data["fragment_name"] = frag_names[fragdex]
+                fragment_data[FragmentDataItem.COLOR_NAME] = current_color
+                fragment_data[FragmentDataItem.FRAGMENT_NAME] = frag_names[fragdex]
                 frag.fragment_data = fragment_data
                 renderable_frags.append(frag)
         frags = renderable_frags
@@ -345,7 +393,6 @@ class LabelRenderer:
             logger.warning("Overfull Hbox: Label is wider than available area")
 
         child_parts = []
-        label_dict = {}
         # Assemble these onto the target
         x = -total_width / 2
         for fragment, frag_sketch in [(x, rendered[x]) for x in frags]:
@@ -357,27 +404,19 @@ class LabelRenderer:
                         # EMBOSSED gets raised, DEBOSSED and EMBEDDED get lowered
                         extrude(frag_sketch, self.opts.depth if self.opts.label_style == LabelStyle.EMBOSSED else -self.opts.depth)
                     child_part = child_bpart.part
-                    child_part_color_name = fragment.fragment_data["color_name"]
+                    child_part_color_name = fragment.fragment_data[FragmentDataItem.COLOR_NAME]
                     child_part.color = child_part_color_name
                     child_part.locate(fxy)
-                    clean_label = ""
-                    # Sanitize the label. Not for security, but just to hope that
-                    # any external tools don't freak out about labels they don't like.
-                    for char in fragment.fragment_data["fragment_name"]:
-                        if char.isalnum() or char == "_":
-                            clean_label += char
-                    child_part_label = clean_label if clean_label else "item"
-                    label_count = label_dict[child_part_label] if child_part_label in label_dict else 0
-                    label_count += 1
-                    label_dict[child_part_label] = label_count
-                    child_part_label += "_" + str(label_count)
-                    if child_part.color != self.opts.default_color:
+                    fragment_name = fragment.fragment_data[FragmentDataItem.FRAGMENT_NAME]
+                    child_part_label = fragment_name if fragment_name else "item"
+                    if child_part_color_name != self.opts.default_color:
                         child_part_label += "__" + child_part_color_name
-                    child_part.label = child_part_label
+                    child_part.label = clean_up_name(get_global_label(child_part_label))
                     child_parts.append(child_part)
             x += fragment_width
 
         sl_compound = Compound(children=child_parts)
+        sl_compound.label = clean_up_name(get_global_label("Line"))
         return sl_compound
         
 def render_divided_label(
@@ -394,10 +433,84 @@ def render_divided_label(
         xy = Location(((leftmost_label_x + i * area_per_label.X, 0)))
         with Locations([xy]):
             if label.strip():
-                ch_pc = renderer.render(label, area_per_label)
+                ch_pc = renderer.render_batch(label, area_per_label)
                 ch_pc.locate(xy)
-                ch_pc.label = "Division_" + str(len(child_pcomps)+1)
                 child_pcomps.append(ch_pc)
 
     div_compound = Compound(children=child_pcomps)
+    div_compound.label = clean_up_name(get_global_label("Batches"))
     return div_compound
+
+def render_collection_of_labels(labels:list(str), divisions:int, y_offset_each_label:float, options:RenderOptions, label_area:Vector) -> Compound:
+    child_pcomps = []
+    y = 0
+    physical_label_count = 0
+    batch_iter = batched(labels, divisions)
+    for ba in batch_iter:
+        labels = ba
+        physical_label_count +=1
+        xy = Location([0, y])
+        with Locations([xy]):
+            try:
+                ch_pc = render_divided_label(
+                        labels,
+                        label_area,
+                        divisions=divisions,
+                        options=options,
+                    )
+                ch_pc.label = clean_up_name(get_global_label("Label"))  #  a physical label
+                ch_pc.locate(xy)
+                child_pcomps.append(ch_pc)
+
+            except fragments.InvalidFragmentSpecification as e:
+                rich.print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
+                sys.exit(1)
+        y -= y_offset_each_label
+
+    labels_compound = Compound(children=child_pcomps)
+    labels_compound.label = clean_up_name("Labels")
+    logger.debug(f"FULL   COMPOUND {labels_compound}\n{labels_compound.show_topology()}")
+    simplify_the_tree(labels_compound)
+    logger.info(f"SIMPLIFIED topology\n{labels_compound.show_topology(limit_class=Part)}")
+    return labels_compound
+
+def simplify_the_tree(comp: Compound):
+    """Walk the tree of a Compound to eliminate unecessary nodes (those with only a single child)"""
+    # Sorry to all the middle managers we're laying off :-)
+    # other than Parts, all Compounds here have at least 1 child, which eliminated some
+    # cluttery defensive checking
+    parent = comp.parent
+    single_child_parent = None
+    adjustment = Vector(0,0,0)
+    while parent and len(parent.children) == 1:
+        single_child_parent = parent
+        adjustment += parent.location.position
+        parent = parent.parent
+    if single_child_parent:
+        # this relative adjustment is made to account for the locations of
+        # the eliminated single-child nodes in the original hierarchy
+        comp.move(Location(position=adjustment))
+        # promote the hierarchical label upwards, with 2 exceptions:
+        # part labels stay where they are, and the very top of the tree is not replaced
+        if parent and not isinstance(comp, Part):
+            single_child_parent.label = comp.label
+        if parent:
+            # look for the child with the matching label and replace it with this comp
+            new_children = []
+            for child in parent.children:
+                if child.label == single_child_parent.label:
+                    new_children.append(comp)
+                else:
+                    new_children.append(child)
+            parent_location = parent.location
+            # Child assignment tweaks Compound location, so restore it
+            parent.children = new_children
+            parent.location = parent_location
+        else:
+            parent_location = single_child_parent.location
+            single_child_parent.children = [comp]
+            single_child_parent.location = parent_location
+    # this is the recursion stopping condition (all leafs are Parts)
+    if not isinstance(comp, Part):
+        for child in comp.children:
+            simplify_the_tree(child)
