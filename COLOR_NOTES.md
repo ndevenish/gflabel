@@ -13,7 +13,7 @@ When a color fragment is seen,
 all fragments after that will be rendered in the named color
 until another color fragment is seen or the end of the line is reached.
 
-Here are some examples.
+There are some examples below.
 They are all rendered in VScode OCP CAD Viewer.
 For each example, a label with just the default colors
 is shown along with the same label using colors.
@@ -28,10 +28,10 @@ However, treatment of color information when a STEP file is imported into a slic
 In general, most slicers don't bother with STEP file colors on import.
 (Most CAD tools do, which is not surprising since STEP is a CAD file format.)
 
-Most color testing was done with Bambu Studio.
+Most slicer color testing was done with Bambu Studio.
 It does not notice colors in STEP files.
-However, Bambu Studio does notice colors in OBJ and 3MF files,
-though it deals with them differently.
+Bambu Studio does notice colors in OBJ and 3MF files,
+though it deals with them slightly differently.
 The file converter at
 [convert3d.org](https://convert3d.org)
 can convert a STEP file into an OBJ or 3MF file that has colors expressed in a way that Bambu Studio understands.
@@ -53,7 +53,7 @@ when you try to send the sliced model to the 3D printer.
 
 Here is a very simple example:
 
-> gflabel --style embossed pred 'R{|}G{|}B' '{color(red)}R{|}{color(green)}G{|}{color(blue)}B' --vscode
+> gflabel --vscode pred '{washer} R O Y G B I V {nut}' '{color(chartreuse)}{washer} {color(red)}R {color(orange)}O {color(yellow)}Y {color(green)}G {color(blue)}B {color(indigo)}I {color(violet)}V {color(chartreuse)}{nut}'  
 
 <img width="1425" height="808" alt="rgb" src="https://github.com/user-attachments/assets/bdf9bc30-611a-4821-ae2b-b6b599f9f24a" />
 
@@ -61,26 +61,26 @@ Nobody is likely to have more than a few colors when 3D printing labels,
 but there is no enforced limit.
 Here's a slightly more complicated example:
 
-> gflabel --style embossed pred '{washer} R O Y G B I V {nut}' '{color(chartreuse)}{washer} {color(red)}R {color(orange)}O {color(yellow)}Y {color(green)}G {color(blue)}B {color(indigo)}I {color(violet)}V {color(chartreuse)}{nut}' --vscode
+> gflabel --vscode pred '{<}I used to\nbe an\nadventurer\nlike you,{|}{variable_resistor}{|}{<}but\nthen....' '{<}I used to\nbe an\nadventurer\nlike you,{|}{color(red)}{variable_resistor}{|}{<}but\nthen....'  
 
 <img width="1205" height="667" alt="image" src="https://github.com/user-attachments/assets/55b0a371-4f9d-49ad-8c9a-26ab936ce644" />
 
 This is an example of a divided label:
 
-> gflabel --style embossed pred '{<}I used to\nbe an\nadventurer\nlike you,{|}{variable_resistor}{|}{<}but\nthen....' '{<}I used to\nbe an\nadventurer\nlike you,{|}{color(red)}{variable_resistor}{|}{<}but\nthen....' --vscode
+> gflabel --vscode pred 'R{|}G{|}B' '{color(red)}R{|}{color(green)}G{|}{color(blue)}B' 
 
 <img width="1431" height="792" alt="adventurer" src="https://github.com/user-attachments/assets/0a64d9da-2006-4b1f-9e1d-4c65d6007da8" />
 
 Another example:
 
-> gflabel --style embossed pred 'Danger! {head(triangle)}' '{color(red)}Danger! {color(black)}{head(triangle)}' --vscode
+> gflabel --vscode pred 'Danger! {head(triangle)}' '{color(red)}Danger! {color(black)}{head(triangle)}'
 
 <img width="1425" height="814" alt="danger" src="https://github.com/user-attachments/assets/ae580ace-a1fc-4b2b-acdd-76f9ecee2502" />
 
 The color fragment should work properly with all of the other fragment types since there is no nesting.
 Here is one of the `{measure}` examples from the README:
 
-> gflabel predbox -w=5 'A\n{measure}{4|}B\n{measure}{1|2}C\n{measure}' 'A\n{color(white)}{measure}{4|}B\n{color(chartreuse)}{measure}{1|2}C\n{color(pink)}{measure}' --vscode
+> gflabel --vscode predbox -w=5 'A\n{measure}{4|}B\n{measure}{1|2}C\n{measure}' 'A\n{color(white)}{measure}{4|}B\n{color(chartreuse)}{measure}{1|2}C\n{color(pink)}{measure}' 
 
 <img width="1439" height="914" alt="measure" src="https://github.com/user-attachments/assets/9571c2fd-d5ed-45e5-a8fd-9e503303d23f" />
 
@@ -89,11 +89,14 @@ If you change the color inside a text fragment,
 the spacing is likely to be affected.
 It's because rendering an uninterrupted text fragment is done
 with the assistance of low-level font handling code.
+(It's the same reason you might see slight spacing differences on different platforms,
+even though you're using the same font.)
 When that same piece of text is broken into two or more
 pieces, the spacing between them is handled directly by
 the `gflabel` code.
 
-> gflabel --style embossed pred 'WWW' 'W{color(blue)}W{color(blue)}W' --vscode
+Have a close look at the spacing between the tips of these letters:
+
+> gflabel --vscode pred 'WWW' 'W{color(blue)}W{color(blue)}W' 
 
 <img width="1423" height="805" alt="www" src="https://github.com/user-attachments/assets/4bdbb5df-d27a-4af5-bfc1-009429fa0d60" />
-
