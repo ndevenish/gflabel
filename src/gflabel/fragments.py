@@ -1256,6 +1256,13 @@ class AlignmentFragment(Fragment):
 class ModifierFragment(Fragment):
     """This Fragment subclass is for fragments that make some kind of inline adjustment applicable to fragments that follow it. Each line of a label starts with defaults, as if no modifier fragment has yet been seen."""
 
+    visible = False
+
+    # a tiny, tiny circle for a microscopic bounding box, which in any case is invisible
+    # this eliminates some tedious special cases in single line processing
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        raise NotImplementedError(f"Modifier fragments should never be rendered: {self.__class__.__name__}")
+
 @fragment("color")
 class ColorFragment(ModifierFragment):
     """Changes the color to be used for subsequent fragments on a line. See COLOR_NOTES.md"""
@@ -1264,15 +1271,6 @@ class ColorFragment(ModifierFragment):
 
     def __init__(self, color_name: str):
         self.color = color_name
-
-    visible = False
-    # a tiny, tiny circle for a microscopic bounding box, which in any case is invisible
-    # this eliminates some tedious special cases in single line processing
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
-        with BuildSketch() as sketch:
-            Circle(0.000000000001)
-        return sketch.sketch
-
 
 @fragment("magnet", examples=["{magnet}"])
 def _fragment_magnet(height: float, _maxsize: float) -> Sketch:
