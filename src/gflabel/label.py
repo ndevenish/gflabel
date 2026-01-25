@@ -401,8 +401,7 @@ class LabelRenderer:
             with Locations(fxy):
                 if fragment.visible:
                     with BuildPart(mode=Mode.PRIVATE) as child_bpart:
-                        # EMBOSSED gets raised, DEBOSSED and EMBEDDED get lowered
-                        extrude(frag_sketch, self.opts.depth if self.opts.label_style == LabelStyle.EMBOSSED else -self.opts.depth)
+                        extrude(frag_sketch, self.opts.depth)
                     child_part = child_bpart.part
                     child_part_color_name = fragment.fragment_data[FragmentDataItem.COLOR_NAME]
                     child_part.color = child_part_color_name

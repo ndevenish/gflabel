@@ -425,6 +425,10 @@ def run(argv: list[str] | None = None):
     args.divisions = args.divisions or len(args.labels)
     args.labels = [x.replace("\\n", "\n") for x in args.labels]
 
+    # EMBOSSED gets raised, DEBOSSED and EMBEDDED get lowered
+    if args.style != LabelStyle.EMBOSSED:
+        args.depth = -args.depth
+
     options = RenderOptions.from_args(args)
     logger.debug("Got render options: %s", options)
     with BuildPart() as base_bpart:
@@ -529,7 +533,7 @@ def run(argv: list[str] | None = None):
                 # Split the base for display as two colours
                 show_parts = []
                 show_cols = []
-                top = base_part.split(Plane.XY.offset(-args.depth), keep=Keep.TOP)
+                top = base_part.split(Plane.XY.offset(args.depth), keep=Keep.TOP)
                 if top:
                     show_parts.append(top)
                     show_cols.append(args.base_color)

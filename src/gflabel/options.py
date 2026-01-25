@@ -91,7 +91,6 @@ class RenderOptions(NamedTuple):
     # like everything else?
     allow_overheight: bool = True
     column_gap: float = 0.4
-    label_style: LabelStyle = LabelStyle.EMBOSSED
     depth: float = 0.4
     default_color: str = "black"
 
@@ -121,7 +120,6 @@ class RenderOptions(NamedTuple):
             ),
             allow_overheight=not args.no_overheight,
             column_gap=args.column_gap,
-            label_style=args.style,
             depth=args.depth,
             default_color=args.label_color,
         )
