@@ -508,6 +508,7 @@ def run(argv: list[str] | None = None):
                 show_cols.append((0.2, 0.2, 0.2))
             else:
                 # Split the base for display as two colours
+                is_embossed = args.style == LabelStyle.EMBOSSED
                 top = part.part.split(
                     Plane.XY if is_embossed else Plane.XY.offset(-args.depth),
                     keep=Keep.TOP,
