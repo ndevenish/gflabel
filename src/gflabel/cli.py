@@ -435,23 +435,35 @@ def run(argv: list[str] | None = None):
                     add(body.part)
 
             logger.debug("Extruding labels")
-            is_embossed = args.style == LabelStyle.EMBOSSED
-            extrude(
-                label_sketch.sketch,
-                amount=args.depth if is_embossed else -args.depth,
-                mode=(Mode.ADD if is_embossed else Mode.SUBTRACT),
-            )
+
+            if args.style in [LabelStyle.DEBOSSED, LabelStyle.EMBEDDED]:
+                extrude(
+                    label_sketch.sketch,
+                    amount=-args.depth,
+                    mode=Mode.SUBTRACT,
+                )
 
     if not is_2d:
         part.part.label = "Base"
 
-    if args.style == LabelStyle.EMBEDDED:
-        # We want to make new volumes for the label, making it flush
-        embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
-        embedded_label.label = "Label"
-        assembly = Compound([part.part, embedded_label])
-    else:
-        assembly = Compound(part.part)
+        if args.style == LabelStyle.EMBEDDED:
+            embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
+            embedded_label.label = "Label"
+
+            assembly = Compound([part.part, embedded_label])
+
+        elif args.style == LabelStyle.EMBOSSED:
+            embossed_label = extrude(label_sketch.sketch, amount=args.depth)
+            embossed_label.label = "Label"
+
+            assembly = Compound([part.part, embossed_label])
+
+        elif args.style == LabelStyle.DEBOSSED:
+            assembly = Compound(part.part)
+
+        else:
+            logger.error(f"Error: Unknown label style '{args.style}'")
+            sys.exit(1)
 
     assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
