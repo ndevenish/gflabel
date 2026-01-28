@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sys
 
 from collections.abc import Callable
 from build123d import (
@@ -20,6 +21,7 @@ from build123d import (
     Vector,
     add,
     extrude,
+    scale,
 )
 from rich import print
 from enum import Enum, auto
@@ -71,6 +73,10 @@ def clean_up_name(dirty_name: str):
 class FragmentDataItem(Enum):
     FRAGMENT_NAME = auto()
     COLOR_NAME = auto()
+    XSCALE = auto()
+    YSCALE = auto()
+    ZSCALE = auto()
+    OFFSET = auto()
 
     @classmethod
     def _missing_(cls, value):
@@ -321,20 +327,36 @@ class LabelRenderer:
         # attached to the Fragment object
 
         current_color = self.opts.default_color
+        current_xscale = 1
+        current_yscale = 1
+        current_zscale = 1
+        current_offset = Location(position=(0,0,0))
         renderable_frags = []
-        for fragdex, frag in enumerate(frags):
-            if isinstance(frag, fragments.ModifierFragment):
+        for fragdex, fragment in enumerate(frags):
+            if isinstance(fragment, fragments.ModifierFragment):
 
-                if isinstance(frag, fragments.ColorFragment):
-                    logger.info(f"Switching to color '{frag.color}'")
-                    current_color = frag.color
+                if isinstance(fragment, fragments.ColorFragment):
+                    logger.info(f"Switching to color '{fragment.color}'")
+                    current_color = fragment.color
+                elif isinstance(fragment, fragments.ScaleFragment):
+                    logger.info(f"Scaling factor(s) ({fragment.x}, {fragment.y}, {fragment.z}) applied")
+                    current_xscale = fragment.x
+                    current_yscale = fragment.y
+                    current_zscale = fragment.z
+                elif isinstance(fragment, fragments.OffsetFragment):
+                    logger.info(f"Offsets ({fragment.x}, {fragment.y}, {fragment.z}) applied")
+                    current_offset = Location(position=(fragment.x, fragment.y, fragment.z))
 
             else:
                 fragment_data = {}
-                fragment_data[FragmentDataItem.COLOR_NAME] = current_color
                 fragment_data[FragmentDataItem.FRAGMENT_NAME] = frag_names[fragdex]
-                frag.fragment_data = fragment_data
-                renderable_frags.append(frag)
+                fragment_data[FragmentDataItem.COLOR_NAME] = current_color
+                fragment_data[FragmentDataItem.XSCALE] = current_xscale
+                fragment_data[FragmentDataItem.YSCALE] = current_yscale
+                fragment_data[FragmentDataItem.ZSCALE] = current_zscale
+                fragment_data[FragmentDataItem.OFFSET] = current_offset
+                fragment.fragment_data = fragment_data
+                renderable_frags.append(fragment)
         frags = renderable_frags
 
         # Overheight fragments: Work out if we have any, so that we can
@@ -353,13 +375,14 @@ class LabelRenderer:
                 )
 
         rendered: dict[fragments.Fragment, Sketch] = {}
-        for frag in [x for x in frags if not x.variable_width]:
+        for fragment in [x for x in frags if not x.variable_width]:
+            fragment_name = fragment.fragment_data[FragmentDataItem.FRAGMENT_NAME]
             # Handle overheight if we have overheight turned off
             frag_available_y = Y_available / (
-                1 if allow_overheight else (frag.overheight or 1)
+                1 if allow_overheight else (fragment.overheight or 1)
             )
-            rendered[frag] = frag.render(frag_available_y, area.X, self.opts)
-
+            rendered[fragment] = fragment.render(frag_available_y, area.X, self.opts)
+            
         # Work out what we have left to give to the variable labels
         remaining_area = area.X - sum(
             x.bounding_box().size.X for x in rendered.values()
@@ -369,23 +392,23 @@ class LabelRenderer:
         # Render the variable-width labels.
         # For now, very dumb algorithm: Each variable fragment gets w/N.
         # but we recalculate after each render.
-        for frag in sorted(
+        for fragment in sorted(
             [x for x in frags if x.variable_width],
             key=lambda x: x.priority,
             reverse=True,
         ):
             # Handle overheight if we have overheight turned off
             frag_available_y = Y_available / (
-                1 if allow_overheight else (frag.overheight or 1)
+                1 if allow_overheight else (fragment.overheight or 1)
             )
-            render = frag.render(
+            rendered_fragment = fragment.render(
                 frag_available_y,
-                max(remaining_area / count_variable, frag.min_width(area.Y)),
+                max(remaining_area / count_variable, fragment.min_width(area.Y)),
                 options,
             )
-            rendered[frag] = render
+            rendered[fragment] = rendered_fragment
             count_variable -= 1
-            remaining_area -= render.bounding_box().size.X
+            remaining_area -= rendered_fragment.bounding_box().size.X
 
         # Calculate the total width
         total_width = sum(x.bounding_box().size.X for x in rendered.values())
@@ -396,20 +419,30 @@ class LabelRenderer:
         # Assemble these onto the target
         x = -total_width / 2
         for fragment, frag_sketch in [(x, rendered[x]) for x in frags]:
+            fragment_name = fragment.fragment_data[FragmentDataItem.FRAGMENT_NAME]
+            fragment_color_name = fragment.fragment_data[FragmentDataItem.COLOR_NAME]
+            xscale = fragment.fragment_data[FragmentDataItem.XSCALE]
+            yscale = fragment.fragment_data[FragmentDataItem.YSCALE]
+            zscale = fragment.fragment_data[FragmentDataItem.ZSCALE]
+            fragment_offset = fragment.fragment_data[FragmentDataItem.OFFSET]
             fragment_width = frag_sketch.bounding_box().size.X
             fxy = Location(((x + fragment_width / 2, 0)))
             with Locations(fxy):
                 if fragment.visible:
                     with BuildPart(mode=Mode.PRIVATE) as child_bpart:
-                        extrude(frag_sketch, self.opts.depth)
+                        extruded = extrude(frag_sketch, self.opts.depth)
+                        # Rescaling can be performance expensive, so only do it if needed
+                        if xscale != 1 or yscale != 1 or zscale != 1:
+                            logger.info(f"Scaling fragment '{fragment_name}' by ({xscale}, {yscale}, {zscale})")
+                            extruded = scale(extruded, (xscale, yscale, zscale))
+                        add(extruded)
                     child_part = child_bpart.part
-                    child_part_color_name = fragment.fragment_data[FragmentDataItem.COLOR_NAME]
-                    child_part.color = child_part_color_name
+                    child_part.color = fragment_color_name
                     child_part.locate(fxy)
-                    fragment_name = fragment.fragment_data[FragmentDataItem.FRAGMENT_NAME]
-                    child_part_label = fragment_name if fragment_name else "item"
-                    if child_part_color_name != self.opts.default_color:
-                        child_part_label += "__" + child_part_color_name
+                    child_part.move(fragment_offset)
+                    child_part_label = fragment_name if fragment_name else "item" # else shouldn't happen
+                    if fragment_color_name != self.opts.default_color:
+                        child_part_label += "__" + fragment_color_name
                     child_part.label = clean_up_name(get_global_label(child_part_label))
                     child_parts.append(child_part)
             x += fragment_width
@@ -462,7 +495,7 @@ def render_collection_of_labels(labels:list(str), divisions:int, y_offset_each_l
                 child_pcomps.append(ch_pc)
 
             except fragments.InvalidFragmentSpecification as e:
-                rich.print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
+                print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
                 sys.exit(1)
         y -= y_offset_each_label
 
