@@ -277,6 +277,8 @@ A list of all the fragments currently recognised:
 | lockwasher        | Circular washer with a locking cutout.                            |
 | magnet            | Horseshoe shaped magnet symbol.                                   |
 | measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
+| offset            | Apply a placement offset on one or more axes for subsequent fragments on a line.|
+| scale             | Apply a placement offset on one or more axes for subsequent fragments on a line.|
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
 | tnut              | T-slot nut.                                                       |
