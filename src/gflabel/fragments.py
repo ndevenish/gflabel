@@ -1279,6 +1279,8 @@ class ScaleFragment(ModifierFragment):
     examples = ["normal{scale(x, 2.5, y, 0.5)}scaled"]
 
     def __init__(self, *args: list[Any]):
+        if len(args) == 0 or len(args)%2 != 0:
+            raise InvalidFragmentSpecification(f"For scale fragments, arguments must be given in pairs. Saw {len(args)} arguments.")
         self.x = 1
         self.y = 1
         self.z = 1
@@ -1299,6 +1301,8 @@ class OffsetFragment(ModifierFragment):
     examples = ["normal{offset(x, 2.5, y, 0.5)}shifted"]
 
     def __init__(self, *args: list[Any]):
+        if len(args) == 0 or len(args)%2 != 0:
+            raise InvalidFragmentSpecification(f"For offset fragments, arguments must be given in pairs. Saw {len(args)} arguments.")
         self.x = 0
         self.y = 0
         self.z = 0
