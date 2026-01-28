@@ -23,6 +23,14 @@ The `{offset()}` fragment, as its name implies,
 lets you apply a specific offset to any of the X/Y/Z axes.
 For example, a negative X offset value will move the affected fragments to the left by that amount.
 
+Both `scale()}` and `{offset()}` take pairs of arguments.
+The first item in each pair is an axis letter (x, y, or z).
+The second item in each pair is a number for the amount of scaling or offset for that axis.
+You can give 1, 2, or 3 pairs of arguments in a single fragment.
+Order of pairs and extra spaces are not significant.
+If you are using both `{scale()}` and `{offset()}` consecutively,
+it doesn't matter which comes first.
+
 Here are some examples:
 
 ```
