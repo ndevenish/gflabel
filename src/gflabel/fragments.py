@@ -1272,6 +1272,46 @@ class ColorFragment(ModifierFragment):
     def __init__(self, color_name: str):
         self.color = color_name
 
+@fragment("scale")
+class ScaleFragment(ModifierFragment):
+    """Apply a scaling on one or more axes for subsequent fragments on a line."""
+
+    examples = ["normal{scale(x, 2.5, y, 0.5)}scaled"]
+
+    def __init__(self, *args: list[Any]):
+        self.x = 1
+        self.y = 1
+        self.z = 1
+        for axis, scale in zip(args[::2], args[1::2]):
+            if axis == 'x' or axis == 'X':
+                self.x = float(scale)
+            elif axis == 'y' or axis == 'Y':
+                self.y = float(scale)
+            elif axis == 'z' or axis == 'Z':
+                self.z = float(scale)
+            else:
+                raise InvalidFragmentSpecification(f"For scale fragments, axis must be 'x', 'y', or 'z'. Saw '{axis}'")
+
+@fragment("offset")
+class OffsetFragment(ModifierFragment):
+    """Apply a placement offset on one or more axes for subsequent fragments on a line."""
+
+    examples = ["normal{offset(x, 2.5, y, 0.5)}shifted"]
+
+    def __init__(self, *args: list[Any]):
+        self.x = 0
+        self.y = 0
+        self.z = 0
+        for axis, offset in zip(args[::2], args[1::2]):
+            if axis == 'x' or axis == 'X':
+                self.x = float(offset)
+            elif axis == 'y' or axis == 'Y':
+                self.y = float(offset)
+            elif axis == 'z' or axis == 'Z':
+                self.z = float(offset)
+            else:
+                raise InvalidFragmentSpecification(f"For offset fragments, axis must be 'x', 'y', or 'z'. Saw '{axis}'")
+
 @fragment("magnet", examples=["{magnet}"])
 def _fragment_magnet(height: float, _maxsize: float) -> Sketch:
     """Horseshoe shaped magnet symbol."""

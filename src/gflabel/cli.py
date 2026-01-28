@@ -453,8 +453,11 @@ def run(argv: list[str] | None = None):
     # EMBOSSED gets raised, DEBOSSED and EMBEDDED get lowered
     if args.style != LabelStyle.EMBOSSED:
         args.depth = -args.depth
-
     options = RenderOptions.from_args(args)
+    # now put it back where it was
+    if args.style != LabelStyle.EMBOSSED:
+        args.depth = -args.depth
+
     logger.debug("Got render options: %s", options)
     with BuildPart() as base_bpart:
         if body.part:
@@ -498,8 +501,10 @@ def run(argv: list[str] | None = None):
     if not is_2d:
         logger.debug(f"BASE PART {base_part}\n{base_part.show_topology()}")
         if args.style == LabelStyle.DEBOSSED:
-            # this produces "UserWarning: Unknown Compound type, color not set"; I don't know why
-            base_part -= labels_compound
+            base_part -= labels_compound  # algebra mode
+            # this cloning avoids "UserWarning: Unknown Compound type, color not set"; I don't know why
+            base_part = Part(base_part)
+            # this Compound wrapper doesn't seem to be needed, but doing it for consistency
             assembly = Compound(children=[base_part])
         else:
             if args.style == LabelStyle.EMBEDDED and args.embedded_lift != 0:
@@ -557,19 +562,24 @@ def run(argv: list[str] | None = None):
                 # CAD viewer notices the Part colors
                 show(assembly)
             else:
-                # Split the base for display as two colours
-                show_parts = []
-                show_cols = []
-                top = base_part.split(Plane.XY.offset(args.depth), keep=Keep.TOP)
-                if top:
-                    show_parts.append(top)
-                    show_cols.append(args.base_color)
-                if args.base != "none":
-                    bottom = base_part.split(Plane.XY, keep=Keep.BOTTOM)
-                    if bottom:
-                        show_parts.append(bottom)
-                        show_cols.append(args.label_color)
-                show(top, bottom, colors=show_cols)
+                # part min Z will be negative; args.depth is positive
+                if -args.depth <= base_part.bounding_box().min.Z:
+                    # if the debossing goes all the way through the base, just show the base
+                    show([base_part], colors=[base_part.color])
+                else:
+                    # Split the base for display as two colours
+                    show_parts = []
+                    show_cols = []
+                    top = base_part.split(Plane.XY.offset(-args.depth), keep=Keep.TOP)
+                    if top:
+                        show_parts.append(top)
+                        show_cols.append(args.base_color)
+                    if args.base != "none":
+                        bottom = base_part.split(Plane.XY, keep=Keep.BOTTOM)
+                        if bottom:
+                            show_parts.append(bottom)
+                            show_cols.append(args.label_color)
+                    show(*show_parts, colors=show_cols)
 
 if __name__ == "__main__":
     run()
