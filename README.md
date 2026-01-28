@@ -268,6 +268,7 @@ A list of all the fragments currently recognised:
 | head              | Screw head with specifiable head-shape.                           |
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
+| square_nut        | A square with a center hole.                                      |
 | nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
 | locknut_profile   | Rectangle with two horizontal lines, as the side view of a hex nut, with an added "top bump". |
 | lockwasher        | Circular washer with a locking cutout.                            |
@@ -314,8 +315,8 @@ There are two classes of bolt/screw representation:
 [cullenect]: https://makerworld.com/en/models/446624
 
 Both types of bolts will accept a head style, one of `pan`, `socket`, `round`,
-or `countersunk`. Both can be marked as `tapping` to have a pointed tip, and
-both can be pointed backwards by adding the `flipped` feature.
+`countersunk` or `wafer`. Both can be marked as `tapping` to have a pointed
+tip, and both can be pointed backwards by adding the `flipped` feature.
 
 Examples showing some differences between the two bolts:
 
