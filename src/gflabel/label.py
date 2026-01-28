@@ -13,6 +13,7 @@ from build123d import (
     BuildPart,
     BuildSketch,
     Compound,
+    Face,
     Location,
     Locations,
     Mode,
@@ -66,7 +67,7 @@ def clean_up_name(dirty_name: str):
             char = "_"
         if char.isascii() and (char.isalnum() or char in "_-"):
             clean_name += char
-    if not clean_name[0].isalpha():
+    if not clean_name or not clean_name[0].isalpha():
         clean_name = "L" + clean_name
     return clean_name
 
@@ -429,14 +430,53 @@ class LabelRenderer:
             fxy = Location(((x + fragment_width / 2, 0)))
             with Locations(fxy):
                 if fragment.visible:
-                    with BuildPart(mode=Mode.PRIVATE) as child_bpart:
-                        extruded = extrude(frag_sketch, self.opts.depth)
-                        # Rescaling can be performance expensive, so only do it if needed
-                        if xscale != 1 or yscale != 1 or zscale != 1:
-                            logger.info(f"Scaling fragment '{fragment_name}' by ({xscale}, {yscale}, {zscale})")
-                            extruded = scale(extruded, (xscale, yscale, zscale))
-                        add(extruded)
-                    child_part = child_bpart.part
+                    if self.opts.text_as_parts and isinstance(fragment, fragments.TextFragment):
+
+                        faces = frag_sketch.get_type(Face)
+                        # build123d text rendering seems to order the faces with the
+                        # final character first, and then the other characters in order.
+                        # I don't know if that always holds true, but rearranging things
+                        # on the assumption that it is. Best effort!
+                        if len(faces):
+                            the_first_shall_be_last = faces.pop(0)
+                            faces.append(the_first_shall_be_last)
+                        face_parts = []
+                        for face in faces:
+                            with BuildPart(mode=Mode.PRIVATE) as face_bpart:
+                                extruded = extrude(face, self.opts.depth)
+                                add(extruded)
+                            face_part = face_bpart.part
+                            # Hoping that the character in the text fragment is in the right order
+                            # Even so, some characters render as multiple faces (e.g., "i").
+                            # Only use this scheme if the face count is the same as the text length.
+                            # It could still be wrong if the text contains spaces. For example,
+                            # "i x" would contain 3 faces and mislead us. Another best effort!
+                            if len(faces) == len(fragment.text) and not " " in fragment.text:
+                                face_tick = fragment.text[len(face_parts)]
+                            else:
+                                face_tick = str(len(face_parts))
+                            face_part_label = clean_up_name(get_global_label(fragment_name + "_" + face_tick))
+                            # We have to extrude each face separately, else the colors and labels get
+                            # lost if we wait and just extrude the Compound
+                            if xscale != 1 or yscale != 1 or zscale != 1:
+                                logger.info(f"Scaling fragment '{face_part_label}' by ({xscale}, {yscale}, {zscale})")
+                                face_part = scale(face_part, (xscale, yscale, zscale))
+                            face_part.color = fragment_color_name
+                            face_part.label = face_part_label
+                            face_parts.append(face_part)
+
+                        child_part = Compound(children=face_parts)
+                    else:
+                            
+                        with BuildPart(mode=Mode.PRIVATE) as child_bpart:
+                            extruded = extrude(frag_sketch, self.opts.depth)
+                            # Rescaling can be performance expensive, so only do it if needed
+                            if xscale != 1 or yscale != 1 or zscale != 1:
+                                logger.info(f"Scaling fragment '{fragment_name}' by ({xscale}, {yscale}, {zscale})")
+                                extruded = scale(extruded, (xscale, yscale, zscale))
+                            add(extruded)
+                        child_part = child_bpart.part
+
                     child_part.color = fragment_color_name
                     child_part.locate(fxy)
                     child_part.move(fragment_offset)

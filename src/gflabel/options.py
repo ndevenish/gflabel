@@ -93,7 +93,8 @@ class RenderOptions(NamedTuple):
     column_gap: float = 0.4
     depth: float = 0.4
     default_color: str = "black"
-
+    text_as_parts: bool = False
+    
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> RenderOptions:
         font_style = [
@@ -122,4 +123,5 @@ class RenderOptions(NamedTuple):
             column_gap=args.column_gap,
             depth=args.depth,
             default_color=args.label_color,
+            text_as_parts=args.text_as_parts,
         )
