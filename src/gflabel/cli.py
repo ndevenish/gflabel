@@ -319,6 +319,12 @@ def run(argv: list[str] | None = None):
         default=False,
     )
     parser.add_argument(
+        "--text-as-parts",
+        help="Text fragments are rendered as a single Part. If you specify this argument, they are rendered as Parts for individual characters, which can help identify them in external tools, though the Part labels are 'best effort' and are sometimes disordered.",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
         "--embedded-lift",
         help="Visualization can have artifacts for embedded style, so lift the embedded labels on Z axis by this (small) amount (in mm). Use 0 to ignore and get precise STEP/STL files. Default: %(default)s",
         type=float,

@@ -123,8 +123,8 @@ The full command parameter usage (as generate by `gflabel --help`):
 usage: gflabel [-h] [--vscode] [-w WIDTH] [--height HEIGHT] [--label-depth DEPTH] [--depth DEPTH_MM] [--no-overheight] [-d DIVISIONS] [--font FONT]
                [--font-size-maximum FONT_SIZE_MAXIMUM | --font-size FONT_SIZE] [--font-style {regular,bold,italic,bolditalic}] [--font-path FONT_PATH]
                [--margin MARGIN] [-o OUTPUT] [--style {embossed,debossed,embedded}] [--base-color BASE_COLOR] [--label-color LABEL_COLOR] [--svg-mono]
-               [--embedded-lift EMBEDDED_LIFT] [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP] [--column-gap COLUMN_GAP] [--xscale XSCALE]
-               [--yscale YSCALE] [--zscale ZSCALE] [-v] [--version VERSION]
+               [--text-as-parts] [--embedded-lift EMBEDDED_LIFT] [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP] [--column-gap COLUMN_GAP]
+               [--xscale XSCALE] [--yscale YSCALE] [--zscale ZSCALE] [-v] [--version VERSION]
                BASE LABEL [LABEL ...]
 
 Generate gridfinity bin labels
@@ -169,6 +169,8 @@ options:
                         'debossed'. Default: blue
   --svg-mono            SVG files are normally produced with the same colors as the label contents. If you specify this argument, they are produced with label
                         contents in the default label color.
+  --text-as-parts       Text fragments are rendered as a single Part. If you specify this argument, they are rendered as Parts for individual characters,
+                        which can help identify them in external tools, though the Part labels are 'best effort' and are sometimes disordered.
   --embedded-lift EMBEDDED_LIFT
                         Visualization can have artifacts for embedded style, so lift the embedded labels on Z axis by this (small) amount (in mm). Use 0 to
                         ignore and get precise STEP/STL files. Default: 0.005
