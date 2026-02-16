@@ -1256,6 +1256,87 @@ class QRCodeFragment(Fragment):
         return sketch.sketch
 
 
+@fragment("microqr", "mqr")
+class MicroQRCodeFragment(Fragment):
+    """
+    Generate a Micro QR code - smaller than standard QR for compact labels.
+
+    Micro QR codes have only one position pattern (corner) instead of three,
+    making them much more compact. Ideal for small labels under 15mm.
+
+    Capacity limits (varies by error correction):
+        - Numeric: up to 35 digits
+        - Alphanumeric: up to 21 characters
+        - Bytes: up to 15 characters
+
+    Arguments:
+        data: The text to encode (keep it short!)
+        error: Error correction level (L, M, Q). Default: L
+               Note: Micro QR doesn't support H level
+
+    Examples:
+        {microqr(M3-10)}
+        {mqr(12345,M)}
+    """
+
+    examples = ["{microqr(PART-01)}", "{mqr(A1B2C3,M)}"]
+
+    # Micro QR only supports L, M, Q (no H)
+    ERROR_LEVELS = {"L", "M", "Q"}
+
+    def __init__(self, data: str, error: str = "L", *args: list[Any]):
+        if args:
+            raise ValueError(f"Unexpected arguments: {args}")
+
+        self.data = data
+        error = error.upper()
+        if error not in self.ERROR_LEVELS:
+            raise ValueError(
+                f"Invalid error correction level '{error}'. "
+                "Micro QR supports: L, M, Q (not H)"
+            )
+        self.error = error
+
+        # Generate Micro QR code matrix
+        try:
+            import segno
+        except ImportError:
+            raise ImportError(
+                "QR code support requires the 'segno' package. "
+                "Install it with: pip install segno"
+            )
+
+        try:
+            self.qr = segno.make_micro(data, error=error)
+        except segno.DataOverflowError:
+            raise ValueError(
+                f"Data too long for Micro QR code: '{data}'. "
+                "Try shorter text or use regular {qr(...)} instead."
+            )
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        # Get the QR matrix (list of lists of bools)
+        matrix = self.qr.matrix
+        size = len(matrix)
+
+        # Calculate module size to fit height
+        module_size = height / size
+
+        # Build sketch with rectangles for each dark module
+        with BuildSketch() as sketch:
+            for row_idx, row in enumerate(matrix):
+                for col_idx, is_dark in enumerate(row):
+                    if is_dark:
+                        # Calculate center position for this module
+                        # Origin at center of QR code
+                        x = (col_idx - size / 2 + 0.5) * module_size
+                        y = (size / 2 - row_idx - 0.5) * module_size  # Flip Y
+                        with Locations([(x, y)]):
+                            Rectangle(module_size, module_size)
+
+        return sketch.sketch
+
+
 @fragment("|")
 class SplitterFragment(Fragment):
     """Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment."""
