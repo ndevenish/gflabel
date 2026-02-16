@@ -1187,6 +1187,68 @@ class _electrical_symbol_fragment(Fragment):
         return _sketch.sketch.translate(-bb.center()).scale(height / bb.size.Y)
 
 
+@fragment("qr", "qrcode")
+class QRCodeFragment(Fragment):
+    """
+    Generate a QR code from text or URL data.
+
+    The QR code will scale to fit the available height. For best results,
+    ensure the label height is at least 10mm for reliable scanning.
+
+    Arguments:
+        data: The text/URL to encode
+        error: Error correction level (L, M, Q, H). Default: M
+               L=7%, M=15%, Q=25%, H=30% recovery capacity
+
+    Examples:
+        {qr(https://example.com)}
+        {qr(PART-12345,H)}
+    """
+
+    examples = ["{qr(https://example.com)}", "{qr(M3x10,H)}"]
+
+    # Error correction level mapping
+    ERROR_LEVELS = {"L", "M", "Q", "H"}
+
+    def __init__(self, data: str, error: str = "M", *args: list[Any]):
+        if args:
+            raise ValueError(f"Unexpected arguments: {args}")
+
+        self.data = data
+        error = error.upper()
+        if error not in self.ERROR_LEVELS:
+            raise ValueError(
+                f"Invalid error correction level '{error}'. Must be one of: L, M, Q, H"
+            )
+        self.error = error
+
+        # Generate QR code as SVG
+        try:
+            import segno
+        except ImportError:
+            raise ImportError(
+                "QR code support requires the 'segno' package. "
+                "Install it with: pip install segno"
+            )
+
+        qr = segno.make(data, error=error)
+
+        # Export to SVG string (no border, dark modules only)
+        svg_buffer = io.BytesIO()
+        qr.save(svg_buffer, kind="svg", border=0, dark="#000000", light=None)
+        svg_data = io.StringIO(svg_buffer.getvalue().decode())
+
+        self.shapes = import_svg(svg_data, flip_y=False)
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        with BuildSketch() as _sketch:
+            add(self.shapes)
+        bb = _sketch.sketch.bounding_box()
+        # QR codes are square, so scale based on height and center
+        scale = height / bb.size.Y
+        return _sketch.sketch.translate(-bb.center()).scale(scale)
+
+
 @fragment("|")
 class SplitterFragment(Fragment):
     """Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment."""

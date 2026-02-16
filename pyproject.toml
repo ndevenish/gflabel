@@ -11,6 +11,7 @@ python = "^3.10,<3.13"
 build123d = ">=0.8.0"
 rich = "^13.7.1"
 pint = "^0.24.4"
+segno = "^1.6.1"
 
 [tool.poetry.scripts]
 gflabel = "gflabel.cli:run"
