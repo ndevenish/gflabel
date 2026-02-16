@@ -1222,7 +1222,7 @@ class QRCodeFragment(Fragment):
             )
         self.error = error
 
-        # Generate QR code as SVG
+        # Generate QR code matrix
         try:
             import segno
         except ImportError:
@@ -1231,22 +1231,29 @@ class QRCodeFragment(Fragment):
                 "Install it with: pip install segno"
             )
 
-        qr = segno.make(data, error=error)
-
-        # Export to SVG string (no border, dark modules only)
-        svg_buffer = io.BytesIO()
-        qr.save(svg_buffer, kind="svg", border=0, dark="#000000", light=None)
-        svg_data = io.StringIO(svg_buffer.getvalue().decode())
-
-        self.shapes = import_svg(svg_data, flip_y=False)
+        self.qr = segno.make(data, error=error)
 
     def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
-        with BuildSketch() as _sketch:
-            add(self.shapes)
-        bb = _sketch.sketch.bounding_box()
-        # QR codes are square, so scale based on height and center
-        scale = height / bb.size.Y
-        return _sketch.sketch.translate(-bb.center()).scale(scale)
+        # Get the QR matrix (list of lists of bools)
+        matrix = self.qr.matrix
+        size = len(matrix)
+
+        # Calculate module size to fit height
+        module_size = height / size
+
+        # Build sketch with rectangles for each dark module
+        with BuildSketch() as sketch:
+            for row_idx, row in enumerate(matrix):
+                for col_idx, is_dark in enumerate(row):
+                    if is_dark:
+                        # Calculate center position for this module
+                        # Origin at center of QR code
+                        x = (col_idx - size / 2 + 0.5) * module_size
+                        y = (size / 2 - row_idx - 0.5) * module_size  # Flip Y
+                        with Locations([(x, y)]):
+                            Rectangle(module_size, module_size)
+
+        return sketch.sketch
 
 
 @fragment("|")
