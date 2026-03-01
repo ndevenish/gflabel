@@ -1205,7 +1205,7 @@ class QRCodeFragment(Fragment):
         {qr(PART-12345,H)}
     """
 
-    examples = ["{qr(https://example.com)}", "{qr(M3x10,H)}"]
+    examples = ["{qr(https://example.com)}"]
 
     # Error correction level mapping
     ERROR_LEVELS = {"L", "M", "Q", "H"}
@@ -1279,7 +1279,7 @@ class MicroQRCodeFragment(Fragment):
         {mqr(12345,M)}
     """
 
-    examples = ["{microqr(PART-01)}", "{mqr(A1B2C3,M)}"]
+    examples = ["{microqr(PART-01)}"]
 
     # Micro QR only supports L, M, Q (no H)
     ERROR_LEVELS = {"L", "M", "Q"}
