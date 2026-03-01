@@ -457,6 +457,16 @@ def _fragment_circle(height: float, _maxsize: float) -> Sketch:
     return sketch.sketch
 
 
+@fragment("squarenut", "square_nut", examples=["{square_nut}"])
+def _fragment_square_nut(height: float, _maxsize: float) -> Sketch:
+    """Square with a circular hole."""
+    with BuildSketch(mode=Mode.PRIVATE) as sketch:
+        inner_radius = 0.55
+        Rectangle(height, height)
+        Circle(height / 2 * inner_radius, mode=Mode.SUBTRACT)
+    return sketch.sketch
+
+
 @fragment("tnut", examples=["{tnut}"])
 def _fragment_tnut(height: float, _maxsize: float) -> Sketch:
     """T-slot nut."""
@@ -471,7 +481,7 @@ class BoltBase(Fragment):
     """Base class for handling common bolt/screw configuration"""
 
     # The options for head shape
-    HEAD_SHAPES = {"countersunk", "pan", "round", "socket"}
+    HEAD_SHAPES = {"countersunk", "pan", "round", "socket", "wafer"}
     # Other, non-drive features
     MODIFIERS = {"tapping", "flip", "partial"}
     # Other names that features can be known as, and what they map to
@@ -596,6 +606,19 @@ class BoltFragment(BoltBase):
                             (-hw + lw, -head_h),
                             (-hw, -head_h),
                             (-hw, head_h),
+                            (-hw + lw, head_h),
+                        ]
+                    )
+                    head_connector_bottom = _head @ 0
+                    head_connector_top = _head @ 1
+                elif self.headshape == "wafer":
+                    # for the wafer head, use a "socket head", but the head
+                    # being only 1/3 the linewidth thick
+                    _head = Polyline(
+                        [
+                            (-hw + lw, -head_h),
+                            (-hw + lw * 2 / 3, -head_h),
+                            (-hw + lw * 2 / 3, head_h),
                             (-hw + lw, head_h),
                         ]
                     )

@@ -269,6 +269,7 @@ A list of all the fragments currently recognised:
 | head              | Screw head with specifiable head-shape.                           |
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
+| nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
 | locknut_profile   | Rectangle with two horizontal lines, as the side view of a hex nut, with an added "top bump". |
 | lockwasher        | Circular washer with a locking cutout.                            |
 | magnet            | Horseshoe shaped magnet symbol.                                   |
@@ -276,6 +277,7 @@ A list of all the fragments currently recognised:
 | mqr, microqr      | Generate a [Micro QR Code](https://en.wikipedia.org/wiki/QR_code#Micro_QR_code) with data. Same arguments as qr, except does not support the `H` level. |
 | nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
 | qr, qrcode        | Generate a QR from text or URL data. Call as `qr(data[,EC])` where `EC` is the error recovery capacity, and can be `L`(7%), `M`(15%, default), `Q`(25%) or `H`(30%). For best results, ensure the label height is at least 10mm for reliable scanning. |
+| square_nut        | A square with a center hole.                                      |
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
 | tnut              | T-slot nut, rectangular horizontal profile                        |
@@ -316,8 +318,8 @@ There are two classes of bolt/screw representation:
 [cullenect]: https://makerworld.com/en/models/446624
 
 Both types of bolts will accept a head style, one of `pan`, `socket`, `round`,
-or `countersunk`. Both can be marked as `tapping` to have a pointed tip, and
-both can be pointed backwards by adding the `flipped` feature.
+`countersunk` or `wafer`. Both can be marked as `tapping` to have a pointed
+tip, and both can be pointed backwards by adding the `flipped` feature.
 
 Examples showing some differences between the two bolts:
 
