@@ -274,6 +274,8 @@ A list of all the fragments currently recognised:
 | tnut              | T-slot nut, rectangular horizontal profile                        |
 | magnet            | Horseshoe shaped magnet symbol.                                   |
 | measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
+| mqr, microqr      | Generate a [Micro QR Code](https://en.wikipedia.org/wiki/QR_code#Micro_QR_code) with data. Same arguments as qr, except does not support the `H` level. |
+| qr, qrcode        | Generate a QR from text or URL data. Call as `qr(data[,EC])` where `EC` is the error recovery capacity, and can be `L`(7%), `M`(15%, default), `Q`(25%) or `H`(30%). For best results, ensure the label height is at least 10mm for reliable scanning. |
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
