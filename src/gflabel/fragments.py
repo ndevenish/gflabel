@@ -457,7 +457,7 @@ def _fragment_circle(height: float, _maxsize: float) -> Sketch:
     return sketch.sketch
 
 
-@fragment("square_nut", examples=["{square_nut}"])
+@fragment("squarenut", "square_nut", examples=["{square_nut}"])
 def _fragment_square_nut(height: float, _maxsize: float) -> Sketch:
     """Square with a circular hole."""
     with BuildSketch(mode=Mode.PRIVATE) as sketch:
