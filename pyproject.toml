@@ -1,19 +1,19 @@
-[tool.poetry]
+[project]
 name = "gflabel"
 version = "0.2.0"
 description = ""
-authors = ["Nicholas Devenish <ndevenish@gmail.com>"]
+authors = [{name = "Nicholas Devenish", email = "ndevenish@gmail.com"}]
 license = "BSD-3-Clause"
 readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "build123d>=0.8.0",
+    "rich>=13.7.1",
+    "pint>=0.24.4",
+    "segno~=1.6.1",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10,<3.13"
-build123d = ">=0.8.0"
-rich = "^13.7.1"
-pint = "^0.24.4"
-segno = "^1.6.1"
-
-[tool.poetry.scripts]
+[project.scripts]
 gflabel = "gflabel.cli:run"
 
 [tool.jane]
@@ -26,8 +26,8 @@ unfixable = ["F841"]
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.bumpversion]
 current_version = "0.2.0"
