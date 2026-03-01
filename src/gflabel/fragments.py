@@ -31,6 +31,7 @@ from build123d import (
     PolarLocations,
     Polyline,
     Rectangle,
+    RectangleRounded,
     RegularPolygon,
     Rot,
     Sketch,
@@ -455,6 +456,7 @@ def _fragment_circle(height: float, _maxsize: float) -> Sketch:
         Circle(height / 2)
     return sketch.sketch
 
+
 @fragment("square_nut", examples=["{square_nut}"])
 def _fragment_square_nut(height: float, _maxsize: float) -> Sketch:
     """Square with a circular hole."""
@@ -462,6 +464,16 @@ def _fragment_square_nut(height: float, _maxsize: float) -> Sketch:
         inner_radius = 0.55
         Rectangle(height, height)
         Circle(height / 2 * inner_radius, mode=Mode.SUBTRACT)
+    return sketch.sketch
+
+
+@fragment("tnut", examples=["{tnut}"])
+def _fragment_tnut(height: float, _maxsize: float) -> Sketch:
+    """T-slot nut."""
+    with BuildSketch(mode=Mode.PRIVATE) as sketch:
+        RectangleRounded(height * 0.6, height, height / 7)
+        Circle((height * 0.4) / 2, mode=Mode.SUBTRACT)
+
     return sketch.sketch
 
 
@@ -497,6 +509,7 @@ class BoltBase(Fragment):
         self.partial = "partial" in self.modifiers
         features -= self.MODIFIERS
 
+        features = {DRIVE_ALIASES.get(x.lower(), x.lower()) for x in features}
         # Drives is everything left
         self.drives = features
 
@@ -1146,7 +1159,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
         matches = _match_electronic_symbol_from_standard(standards_order, matches)
         if len(matches) == 1:
             logger.debug(
-                f"Using symbol \"{matches[0]['id']}\" because standard [b]{matches[0]['standard']}[/b] is preferred.",
+                f'Using symbol "{matches[0]["id"]}" because standard [b]{matches[0]["standard"]}[/b] is preferred.',
                 extra={"markup": True},
             )
             return matches[0]
@@ -1157,7 +1170,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
     if matches:
         cols = ["ID", "Category", "Name", "Standard", "Filename"]
         logger.error(
-            f"Could not decide on symbol from fuzzy specification \"{','.join(requested)}\". Possible options:"
+            f'Could not decide on symbol from fuzzy specification "{",".join(requested)}". Possible options:'
             + "\n"
             + "\n".join(
                 format_table(cols, matches, lambda x: x.lower(), prefix="    ")
@@ -1166,7 +1179,7 @@ def _match_electronic_symbol_with_selectors(selectors: Iterable[str]) -> Manifes
         )
     else:
         logger.error(
-            f"No electronic symbols matched the specification \"{','.join(requested)}\""
+            f'No electronic symbols matched the specification "{",".join(requested)}"'
         )
     raise InvalidFragmentSpecification("Please specify symbol more precisely.")
 
@@ -1195,6 +1208,156 @@ class _electrical_symbol_fragment(Fragment):
         bb = _sketch.sketch.bounding_box()
         # Resize this to match the requested height, and to be centered
         return _sketch.sketch.translate(-bb.center()).scale(height / bb.size.Y)
+
+
+@fragment("qr", "qrcode")
+class QRCodeFragment(Fragment):
+    """
+    Generate a QR code from text or URL data.
+
+    The QR code will scale to fit the available height. For best results,
+    ensure the label height is at least 10mm for reliable scanning.
+
+    Arguments:
+        data: The text/URL to encode
+        error: Error correction level (L, M, Q, H). Default: M
+               L=7%, M=15%, Q=25%, H=30% recovery capacity
+
+    Examples:
+        {qr(https://example.com)}
+        {qr(PART-12345,H)}
+    """
+
+    examples = ["{qr(https://example.com)}"]
+
+    # Error correction level mapping
+    ERROR_LEVELS = {"L", "M", "Q", "H"}
+
+    def __init__(self, data: str, error: str = "M", *args: list[Any]):
+        if args:
+            raise ValueError(f"Unexpected arguments: {args}")
+
+        self.data = data
+        error = error.upper()
+        if error not in self.ERROR_LEVELS:
+            raise ValueError(
+                f"Invalid error correction level '{error}'. Must be one of: L, M, Q, H"
+            )
+        self.error = error
+
+        # Generate QR code matrix
+        try:
+            import segno
+        except ImportError:
+            raise ImportError(
+                "QR code support requires the 'segno' package. "
+                "Install it with: pip install segno"
+            )
+
+        self.qr = segno.make(data, error=error)
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        # Get the QR matrix (list of lists of bools)
+        matrix = self.qr.matrix
+        size = len(matrix)
+
+        # Calculate module size to fit height
+        module_size = height / size
+
+        # Build sketch with rectangles for each dark module
+        with BuildSketch() as sketch:
+            for row_idx, row in enumerate(matrix):
+                for col_idx, is_dark in enumerate(row):
+                    if is_dark:
+                        # Calculate center position for this module
+                        # Origin at center of QR code
+                        x = (col_idx - size / 2 + 0.5) * module_size
+                        y = (size / 2 - row_idx - 0.5) * module_size  # Flip Y
+                        with Locations([(x, y)]):
+                            Rectangle(module_size, module_size)
+
+        return sketch.sketch
+
+
+@fragment("microqr", "mqr")
+class MicroQRCodeFragment(Fragment):
+    """
+    Generate a Micro QR code - smaller than standard QR for compact labels.
+
+    Micro QR codes have only one position pattern (corner) instead of three,
+    making them much more compact. Ideal for small labels under 15mm.
+
+    Capacity limits (varies by error correction):
+        - Numeric: up to 35 digits
+        - Alphanumeric: up to 21 characters
+        - Bytes: up to 15 characters
+
+    Arguments:
+        data: The text to encode (keep it short!)
+        error: Error correction level (L, M, Q). Default: L
+               Note: Micro QR doesn't support H level
+
+    Examples:
+        {microqr(M3-10)}
+        {mqr(12345,M)}
+    """
+
+    examples = ["{microqr(PART-01)}"]
+
+    # Micro QR only supports L, M, Q (no H)
+    ERROR_LEVELS = {"L", "M", "Q"}
+
+    def __init__(self, data: str, error: str = "L", *args: list[Any]):
+        if args:
+            raise ValueError(f"Unexpected arguments: {args}")
+
+        self.data = data
+        error = error.upper()
+        if error not in self.ERROR_LEVELS:
+            raise ValueError(
+                f"Invalid error correction level '{error}'. "
+                "Micro QR supports: L, M, Q (not H)"
+            )
+        self.error = error
+
+        # Generate Micro QR code matrix
+        try:
+            import segno
+        except ImportError:
+            raise ImportError(
+                "QR code support requires the 'segno' package. "
+                "Install it with: pip install segno"
+            )
+
+        try:
+            self.qr = segno.make_micro(data, error=error)
+        except segno.DataOverflowError:
+            raise ValueError(
+                f"Data too long for Micro QR code: '{data}'. "
+                "Try shorter text or use regular {qr(...)} instead."
+            )
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+        # Get the QR matrix (list of lists of bools)
+        matrix = self.qr.matrix
+        size = len(matrix)
+
+        # Calculate module size to fit height
+        module_size = height / size
+
+        # Build sketch with rectangles for each dark module
+        with BuildSketch() as sketch:
+            for row_idx, row in enumerate(matrix):
+                for col_idx, is_dark in enumerate(row):
+                    if is_dark:
+                        # Calculate center position for this module
+                        # Origin at center of QR code
+                        x = (col_idx - size / 2 + 0.5) * module_size
+                        y = (size / 2 - row_idx - 0.5) * module_size  # Flip Y
+                        with Locations([(x, y)]):
+                            Rectangle(module_size, module_size)
+
+        return sketch.sketch
 
 
 @fragment("|")

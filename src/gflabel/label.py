@@ -172,7 +172,7 @@ class LabelRenderer:
                     - (row_height + self.opts.line_spacing_mm) * n
                     - row_height / 2
                 )
-                logger.info(f'Rendering line {n+1} ("{line}")')
+                logger.info(f'Rendering line {n + 1} ("{line}")')
                 IndentingRichHandler.indent()
                 with Locations([(0, render_y)]):
                     add(

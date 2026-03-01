@@ -34,6 +34,7 @@ from build123d import (
     add,
     export_step,
     extrude,
+    scale,
 )
 
 from . import fragments
@@ -43,6 +44,7 @@ from .bases.modern import ModernBase
 from .bases.none import NoneBase
 from .bases.plain import PlainBase
 from .bases.pred import PredBase, PredBoxBase
+from .bases.tailor import TailorBoxBase
 from .label import render_divided_label
 from .options import LabelStyle, RenderOptions
 from .util import IndentingRichHandler, batched, unit_registry
@@ -111,7 +113,15 @@ class BaseChoiceAction(argparse.Action):
         if values in deprecated_choices:
             values = deprecated_choices[values]
 
-        choices = ["pred", "plain", "none", "cullenect", "predbox", "modern"]
+        choices = [
+            "pred",
+            "plain",
+            "none",
+            "cullenect",
+            "predbox",
+            "tailorbox",
+            "modern",
+        ]
 
         if values not in choices:
             # Allow prefix-only of choice name, as long as unambiguous
@@ -142,6 +152,7 @@ def base_name_to_subclass(name: str) -> type[LabelBase]:
         "modern": ModernBase,
         "pred": PredBase,
         "predbox": PredBoxBase,
+        "tailorbox": TailorBoxBase,
         "plain": PlainBase,
         "none": NoneBase,
         None: NoneBase,
@@ -164,7 +175,7 @@ def run(argv: list[str] | None = None):
     parser.add_argument(
         "base",
         metavar="BASE",
-        help="Label base to generate onto (pred, plain, none, cullenect, predbox, modern).",
+        help="Label base to generate onto (pred, plain, none, cullenect, predbox, tailorbox, modern).",
         action=BaseChoiceAction,
     )
     parser.add_argument(
@@ -283,6 +294,24 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--column-gap", help="Gap (in mm) between columns", default=0.4, type=float
+    )
+    parser.add_argument(
+        "--xscale",
+        help="Scale factor for entire label on the X axis",
+        default=1.0,
+        type=float,
+    )
+    parser.add_argument(
+        "--yscale",
+        help="Scale factor for entire label on the Y axis",
+        default=1.0,
+        type=float,
+    )
+    parser.add_argument(
+        "--zscale",
+        help="Scale factor for entire label on the Z axis",
+        default=1.0,
+        type=float,
     )
     parser.add_argument("--box", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
@@ -416,13 +445,16 @@ def run(argv: list[str] | None = None):
     if not is_2d:
         part.part.label = "Base"
 
-    if args.style == LabelStyle.EMBEDDED:
-        # We want to make new volumes for the label, making it flush
-        embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
-        embedded_label.label = "Label"
-        assembly = Compound([part.part, embedded_label])
-    else:
-        assembly = Compound(part.part)
+    if not is_2d:
+        if args.style == LabelStyle.EMBEDDED:
+            # We want to make new volumes for the label, making it flush
+            embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
+            embedded_label.label = "Label"
+            assembly = Compound([part.part, embedded_label])
+        else:
+            assembly = Compound(part.part)
+
+        assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
     for output in args.output:
         if output.endswith(".stl"):
