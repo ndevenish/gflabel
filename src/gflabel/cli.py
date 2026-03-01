@@ -445,15 +445,16 @@ def run(argv: list[str] | None = None):
     if not is_2d:
         part.part.label = "Base"
 
-    if args.style == LabelStyle.EMBEDDED:
-        # We want to make new volumes for the label, making it flush
-        embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
-        embedded_label.label = "Label"
-        assembly = Compound([part.part, embedded_label])
-    else:
-        assembly = Compound(part.part)
+    if not is_2d:
+        if args.style == LabelStyle.EMBEDDED:
+            # We want to make new volumes for the label, making it flush
+            embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
+            embedded_label.label = "Label"
+            assembly = Compound([part.part, embedded_label])
+        else:
+            assembly = Compound(part.part)
 
-    assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
+        assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
 
     for output in args.output:
         if output.endswith(".stl"):
