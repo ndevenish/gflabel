@@ -265,22 +265,22 @@ A list of all the fragments currently recognised:
 | bolt              | Variable length bolt, in the style of Printables pred-box labels.<br><br>If the requested bolt is longer than the available space, then the<br>bolt will be as large as possible with a broken thread. |
 | box               | Arbitrary width, height centered box. If height is not specified, will expand to row height. |
 | circle            | A filled circle.                                                  |
+| cullbolt          | Alternate bolt representation incorporating screw drive, with fixed length, as used by the [Cullenect][cullenect] system. |
 | head              | Screw head with specifiable head-shape.                           |
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
 | hexnut, nut       | Hexagonal outer profile nut with circular cutout.                 |
-| nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
 | locknut_profile   | Rectangle with two horizontal lines, as the side view of a hex nut, with an added "top bump". |
 | lockwasher        | Circular washer with a locking cutout.                            |
-| tnut              | T-slot nut, rectangular horizontal profile                        |
 | magnet            | Horseshoe shaped magnet symbol.                                   |
 | measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
 | mqr, microqr      | Generate a [Micro QR Code](https://en.wikipedia.org/wiki/QR_code#Micro_QR_code) with data. Same arguments as qr, except does not support the `H` level. |
+| nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
 | qr, qrcode        | Generate a QR from text or URL data. Call as `qr(data[,EC])` where `EC` is the error recovery capacity, and can be `L`(7%), `M`(15%, default), `Q`(25%) or `H`(30%). For best results, ensure the label height is at least 10mm for reliable scanning. |
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
+| tnut              | T-slot nut, rectangular horizontal profile                        |
 | variable_resistor | Electrical symbol of a variable resistor.                         |
 | washer            | Circular washer with a circular hole.                             |
-| cullbolt          | Alternate bolt representation incorporating screw drive, with fixed length, as used by the [Cullenect][cullenect] system. |
 | `\|` (pipe)       | Denotes a column edge, where the label should be split. You can specify relative proportions for the columns, as well as specifying the column alignment. |
 
 A basic set of examples showing the usage of some of these:
