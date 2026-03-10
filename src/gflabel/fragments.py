@@ -21,6 +21,7 @@ from build123d import (
     BuildSketch,
     CenterArc,
     Circle,
+    Compound,
     EllipticalCenterArc,
     GridLocations,
     Line,
@@ -173,7 +174,7 @@ class Fragment(metaclass=ABCMeta):
         return 0
 
     @abstractmethod
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         pass
 
 
@@ -184,7 +185,7 @@ class FunctionalFragment(Fragment):
         self.args = args
         self.fn = fn
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         return self.fn(height, maxsize, *self.args)
 
 
@@ -197,7 +198,7 @@ class SpacerFragment(Fragment):
         super().__init__(*args)
         self.distance = distance
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         with BuildSketch() as sketch:
             Rectangle(self.distance, height)
         return sketch.sketch
@@ -218,7 +219,7 @@ class ExpandingFragment(Fragment):
 
     examples = ["L{...}R"]
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         with BuildSketch() as sketch:
             Rectangle(maxsize, height)
         return sketch.sketch
@@ -231,7 +232,7 @@ class TextFragment(Fragment):
     def __init__(self, text: str):
         self.text = text
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         if not height:
             raise ValueError("Trying to render zero-height text fragment")
         with BuildSketch() as sketch:
@@ -278,7 +279,7 @@ class WhitespaceFragment(Fragment):
             )
         self.whitespace = whitespace
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         with BuildSketch() as sketch:
             Rectangle(_whitespace_width(self.whitespace, height, options), height)
         return sketch.sketch
@@ -536,7 +537,7 @@ class BoltFragment(BoltBase):
     def min_width(self, height: float) -> float:
         return height
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         length = self.length
         # line width: How thick the head and body are
         lw = height / 2.25
@@ -705,7 +706,7 @@ class CullenectBoltFragment(BoltBase):
 
     overheight = 1.6
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         height *= self.overheight
         # 12 mm high for 15 mm wide. Scale to this.
         width = 1.456 * height  # 15 / 12 * height
@@ -1202,7 +1203,7 @@ class _electrical_symbol_fragment(Fragment):
             )
             self.shapes = import_svg(svg_data, flip_y=False)
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         with BuildSketch() as _sketch:
             add(self.shapes)
         bb = _sketch.sketch.bounding_box()
@@ -1256,7 +1257,7 @@ class QRCodeFragment(Fragment):
 
         self.qr = segno.make(data, error=error)
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         # Get the QR matrix (list of lists of bools)
         matrix = self.qr.matrix
         size = len(matrix)
@@ -1337,7 +1338,7 @@ class MicroQRCodeFragment(Fragment):
                 "Try shorter text or use regular {qr(...)} instead."
             )
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         # Get the QR matrix (list of lists of bools)
         matrix = self.qr.matrix
         size = len(matrix)
@@ -1379,7 +1380,7 @@ class SplitterFragment(Fragment):
         self.left = float(left or 1)
         self.right = float(right or 1)
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         # This should never happen; for now. We might decide to add
         # options for rendered dividers later.
         raise NotImplementedError("Splitters should never be rendered")
@@ -1398,7 +1399,7 @@ class DimensionFragment(Fragment):
     def min_width(self, height: float) -> float:
         return 1
 
-    def render(self, height: float, maxsize: float, options: RenderOptions) -> Sketch:
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
         lw = 0.4
         with BuildSketch() as sketch:
             with Locations([(-maxsize / 2, 0)]):
@@ -1424,6 +1425,27 @@ class AlignmentFragment(Fragment):
         raise InvalidFragmentSpecification(
             "Got Alignment fragment ({<} or {>}) not at the start of a label; for selective alignment please pad with {...}, or specify alignment in column division."
         )
+
+
+class ModifierFragment(Fragment):
+    """This Fragment subclass is for fragments that make some kind of inline adjustment applicable to fragments that follow it. Each line of a label starts with defaults, as if no modifier fragment has yet been seen."""
+
+    visible = False
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
+        raise NotImplementedError(
+            f"Modifier fragments should never be rendered: {self.__class__.__name__}"
+        )
+
+
+@fragment("color")
+class ColorFragment(ModifierFragment):
+    """Changes the color to be used for subsequent fragments on a line. See COLOR_AND_SVG_NOTES.md"""
+
+    examples = ["{color(blue)}BLUE{color(green)}GREEN]"]
+
+    def __init__(self, color_name: str):
+        self.color = color_name
 
 
 @fragment("magnet", examples=["{magnet}"])

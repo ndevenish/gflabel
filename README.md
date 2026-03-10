@@ -128,57 +128,91 @@ gflabel tailorbox -w=5 "M3 {|} Bolts Nuts\nWashers\n{hexhead(hex)} {hexhead(torx
 The full command parameter usage (as generate by `gflabel --help`):
 
 ```
-usage: gflabel [-h] [--vscode] [-w WIDTH] [--height HEIGHT] [--depth DEPTH_MM] [--no-overheight] [-d DIVISIONS] [--font FONT]
-               [--font-size-maximum FONT_SIZE_MAXIMUM | --font-size FONT_SIZE] [--font-style {regular,bold,italic}] [--font-path FONT_PATH]
-               [--margin MARGIN] [-o OUTPUT] [--style {embossed,debossed,embedded}] [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP]
-               [--column-gap COLUMN_GAP] [--xscale XSCALE] [--yscale YSCALE] [--zscale ZSCALE] [-v] [--version VERSION]
+usage: gflabel [-h] [--vscode] [-w WIDTH] [--height HEIGHT]
+               [--label-depth DEPTH] [--depth DEPTH_MM] [--no-overheight]
+               [-d DIVISIONS] [--font FONT]
+               [--font-size-maximum FONT_SIZE_MAXIMUM | --font-size FONT_SIZE]
+               [--font-style {regular,bold,italic,bolditalic}]
+               [--font-path FONT_PATH] [--margin MARGIN] [-o OUTPUT]
+               [--style {embossed,debossed,embedded}]
+               [--base-color BASE_COLOR] [--label-color LABEL_COLOR]
+               [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP]
+               [--column-gap COLUMN_GAP] [--xscale XSCALE] [--yscale YSCALE]
+               [--zscale ZSCALE] [-v] [--version VERSION]
                BASE LABEL [LABEL ...]
 
 Generate gridfinity bin labels
 
 positional arguments:
-  BASE                  Label base to generate onto (pred, plain, none, cullenect, predbox).
+  BASE                  Label base to generate onto (pred, plain, none,
+                        cullenect, predbox, tailorbox, modern).
   LABEL
 
 options:
   -h, --help            show this help message and exit
   --vscode              Run in vscode_ocp mode, and show the label afterwards.
   -w WIDTH, --width WIDTH
-                        Label width. If using a gridfinity standard base, then this is width in U. Otherwise, width in mm.
-  --height HEIGHT       Label height, in mm. Ignored for standardised label bases.
+                        Label width. If using a gridfinity standard base, then
+                        this is width in U. Otherwise, width in mm. Specify
+                        units e.g. '3mm' to override the default behaviour.
+  --height HEIGHT       Label height, by default in mm. For bases with
+                        standard heights, this will overwrite the height,
+                        diverging from the standard.
+  --label-depth DEPTH   Label depth, by default in mm.
   --depth DEPTH_MM      How high (or deep) the label extrusion is.
-  --no-overheight       Disable the 'Overheight' system. This allows some symbols to oversize, meaning that the rest of the line will first shrink
-                        before they are shrunk.
+  --no-overheight       Disable the 'Overheight' system. This allows some
+                        symbols to oversize, meaning that the rest of the line
+                        will first shrink before they are shrunk.
   -d DIVISIONS, --divisions DIVISIONS
-                        How many areas to divide a single label into. If more labels that this are requested, multiple labels will be generated.
-                        Default: 1.
-  --font FONT           The name of the system font to use for rendering. If unspecified, a bundled version of Open Sans will be used. Set GFLABEL_FONT
-                        in your environment to change the default.
+                        How many areas to divide a single label into. If more
+                        labels that this are requested, multiple labels will
+                        be generated. Default: 1.
+  --font FONT           The name of the system font to use for rendering. If
+                        unspecified, a bundled version of Open Sans will be
+                        used. Set GFLABEL_FONT in your environment to change
+                        the default.
   --font-size-maximum FONT_SIZE_MAXIMUM
-                        Specify a maximum font size (in mm) to use for rendering. The text may end up smaller than this if it needs to fit in the area.
+                        Specify a maximum font size (in mm) to use for
+                        rendering. The text may end up smaller than this if it
+                        needs to fit in the area.
   --font-size FONT_SIZE
-                        The font size (in mm) to use for rendering. If unset, then the font will use as much vertical space as needed (that also fits
-                        within the horizontal area).
-  --font-style {regular,bold,italic}
+                        The font size (in mm) to use for rendering. If unset,
+                        then the font will use as much vertical space as
+                        needed (that also fits within the horizontal area).
+  --font-style {regular,bold,italic,bolditalic}
                         The font style use for rendering. [Default: regular]
   --font-path FONT_PATH
                         Path to font file, if not using a system-level font.
-  --margin MARGIN       The margin area (in mm) to leave around the label contents. Default is per-base.
+  --margin MARGIN       The margin area (in mm) to leave around the label
+                        contents. Default is per-base.
   -o OUTPUT, --output OUTPUT
                         Output filename(s). [Default: []]
   --style {embossed,debossed,embedded}
                         How the label contents are formed.
+  --base-color BASE_COLOR
+                        The name of a color used for rendering the base. Can
+                        be any of the recognized CSS3 color names. Default:
+                        orange
+  --label-color LABEL_COLOR
+                        The name of a color used for rendering the label
+                        contents. Can be any of the recognized CSS3 color
+                        names. Ignored for style 'debossed'. Default: blue
   --list-fragments      List all available fragments.
   --list-symbols        List all available electronic symbols
   --label-gap LABEL_GAP
-                        Vertical gap (in mm) between physical labels. Default: 2 mm
+                        Vertical gap (in mm) between physical labels. Default:
+                        2 mm
   --column-gap COLUMN_GAP
                         Gap (in mm) between columns
-  --xscale,--yscale,--zscale
-                        Scale factor for entire label along the corresponding axis. Useful when you need slight adjustments for proper fit.
-                        [All default to 1.0]
+  --xscale XSCALE       Scale factor for entire label on the X axis. Default:
+                        1.0
+  --yscale YSCALE       Scale factor for entire label on the Y axis. Default:
+                        1.0
+  --zscale ZSCALE       Scale factor for entire label on the Z axis. Default:
+                        1.0
   -v, --verbose         Verbose output
-  --version VERSION     The version of geometry to use for a given label system (if a system has versions). [Default: latest]
+  --version VERSION     The version of geometry to use for a given label
+                        system (if a system has versions). [Default: latest]
 ```
 
 ## Defining Labels
@@ -265,6 +299,7 @@ A list of all the fragments currently recognised:
 | bolt              | Variable length bolt, in the style of Printables pred-box labels.<br><br>If the requested bolt is longer than the available space, then the<br>bolt will be as large as possible with a broken thread. |
 | box               | Arbitrary width, height centered box. If height is not specified, will expand to row height. |
 | circle            | A filled circle.                                                  |
+| color             | Changes the color to be used for subsequent fragments on a line. See COLOR_AND_SVG_NOTES.md |
 | cullbolt          | Alternate bolt representation incorporating screw drive, with fixed length, as used by the [Cullenect][cullenect] system. |
 | head              | Screw head with specifiable head-shape.                           |
 | hexhead           | Hexagonal screw head. Will accept drives, but not compulsory.     |
