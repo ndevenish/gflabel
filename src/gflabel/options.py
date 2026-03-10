@@ -91,6 +91,8 @@ class RenderOptions(NamedTuple):
     # like everything else?
     allow_overheight: bool = True
     column_gap: float = 0.4
+    depth: float = 0.4
+    default_color: str = "black"
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> RenderOptions:
@@ -118,4 +120,20 @@ class RenderOptions(NamedTuple):
             ),
             allow_overheight=not args.no_overheight,
             column_gap=args.column_gap,
+            depth=args.depth,
+            default_color=args.label_color,
         )
+
+
+class FragmentDataItem(Enum):
+    FRAGMENT_NAME = auto()
+    COLOR_NAME = auto()
+
+    @classmethod
+    def _missing_(cls, value):
+        for kind in cls:
+            if kind.name.lower() == value.lower():
+                return kind
+
+    def __str__(self):
+        return self.name.lower()

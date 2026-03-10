@@ -20,20 +20,20 @@ import rich.table
 from build123d import (
     BuildPart,
     BuildSketch,
-    ColorIndex,
+    Color,
     Compound,
     ExportSVG,
     FontStyle,
     Keep,
-    Location,
     Locations,
     Mode,
+    Part,
     Plane,
     RectangleRounded,
     Vector,
     add,
     export_step,
-    extrude,
+    export_stl,
     scale,
 )
 
@@ -45,9 +45,9 @@ from .bases.none import NoneBase
 from .bases.plain import PlainBase
 from .bases.pred import PredBase, PredBoxBase
 from .bases.tailor import TailorBoxBase
-from .label import render_divided_label
+from .label import clean_up_name, render_collection_of_labels
 from .options import LabelStyle, RenderOptions
-from .util import IndentingRichHandler, batched, unit_registry
+from .util import IndentingRichHandler, unit_registry
 
 logger = logging.getLogger(__name__)
 
@@ -164,9 +164,33 @@ def base_name_to_subclass(name: str) -> type[LabelBase]:
     return bases[name]
 
 
+def colored_parts(comp: Compound) -> list[Part]:
+    """Walk the tree of comp to get a list of individual Part objects. Adjust their local locatons to globals along the way."""
+    part_list = []
+    for child in comp.children:
+        if isinstance(child, Part):
+            # we clone the part so that the move() calls don't modify things in place
+            clone = Part(child)
+            clone.label = child.label
+            clone.color = child.color
+            clone.move(comp.location)
+            part_list.append(clone)
+        elif isinstance(child, Compound):
+            child_part_list = colored_parts(child)
+            for child_part in child_part_list:
+                clone_part = Part(child_part)
+                clone_part.label = child_part.label
+                clone_part.color = child_part.color
+                clone_part.move(comp.location)
+                part_list.append(clone_part)
+    return part_list
+
+
 def run(argv: list[str] | None = None):
     # Handle the old way of specifying base
-    if any(x.startswith("--base") for x in (argv or sys.argv)):
+    if any(
+        (x.startswith("--base") and x != "--base-color") for x in (argv or sys.argv)
+    ):
         sys.exit(
             "Error: --base is no longer the way to specify base geometry. Please pass in as a direct argument (gflabel <BASE>)"
         )
@@ -277,6 +301,18 @@ def run(argv: list[str] | None = None):
         type=LabelStyle,
     )
     parser.add_argument(
+        "--base-color",
+        help="The name of a color used for rendering the base. Can be any of the recognized CSS3 color names. Default: %(default)s",
+        type=str,
+        default="orange",
+    )
+    parser.add_argument(
+        "--label-color",
+        help="The name of a color used for rendering the label contents. Can be any of the recognized CSS3 color names. Ignored for style 'debossed'. Default: %(default)s",
+        type=str,
+        default="blue",
+    )
+    parser.add_argument(
         "--list-fragments",
         help="List all available fragments.",
         action=ListFragmentsAction,
@@ -297,19 +333,19 @@ def run(argv: list[str] | None = None):
     )
     parser.add_argument(
         "--xscale",
-        help="Scale factor for entire label on the X axis",
+        help="Scale factor for entire label on the X axis. Default: %(default)s",
         default=1.0,
         type=float,
     )
     parser.add_argument(
         "--yscale",
-        help="Scale factor for entire label on the Y axis",
+        help="Scale factor for entire label on the Y axis. Default: %(default)s",
         default=1.0,
         type=float,
     )
     parser.add_argument(
         "--zscale",
-        help="Scale factor for entire label on the Z axis",
+        help="Scale factor for entire label on the Z axis. Default: %(default)s",
         default=1.0,
         type=float,
     )
@@ -375,21 +411,49 @@ def run(argv: list[str] | None = None):
     elif args.margin is not pint.Quantity:
         args.margin = pint.Quantity(args.margin, unit_registry.mm)
 
+    body: LabelBase | None = None
+    body = base_type(args)
+    if args.xscale != 1.0 or args.yscale != 1.0 or args.zscale != 1.0:
+        logger.info(
+            f"Scaling overall label by ({args.xscale}, {args.yscale}, {args.zscale})"
+        )
+        if args.width:
+            args.width *= args.xscale
+        if args.margin:
+            args.margin *= args.xscale
+        if args.height:
+            args.height *= args.yscale
+        if args.depth:
+            args.depth *= args.zscale
+        if body:
+            if body.part:
+                body.part = scale(body.part, (args.xscale, args.yscale, args.zscale))
+            if body.area:
+                body.area = Vector(args.xscale * body.area.X, args.yscale * body.area.Y)
+            if body.DEFAULT_WIDTH:
+                body.DEFAULT_WIDTH *= args.xscale
+            if body.DEFAULT_MARGIN:
+                body.DEFAULT_MARGIN *= args.xscale
+
     logger.info(f"Rendering label with width: {args.width}")
 
     args.divisions = args.divisions or len(args.labels)
     args.labels = [x.replace("\\n", "\n") for x in args.labels]
 
+    # EMBOSSED gets raised, DEBOSSED and EMBEDDED get lowered
+    if args.style != LabelStyle.EMBOSSED:
+        args.depth = -args.depth
     options = RenderOptions.from_args(args)
-    logger.debug("Got render options: %s", options)
-    body: LabelBase | None = None
-    with BuildPart() as part:
-        y = 0
-        body = base_type(args)
+    # now put it back where it was
+    if args.style != LabelStyle.EMBOSSED:
+        args.depth = -args.depth
 
+    logger.debug("Got render options: %s", options)
+    with BuildPart() as base_bpart:
         if body.part:
             y_offset_each_label = body.part.bounding_box().size.Y + args.label_gap
             label_area = body.area
+
         else:
             # Only occurs if label type has no body e.g. "None"
             if args.height is None:
@@ -400,32 +464,15 @@ def run(argv: list[str] | None = None):
                 X=args.width.to("mm").magnitude, Y=args.height.to("mm").magnitude
             )
 
-        body_locations = []
-        with BuildSketch(mode=Mode.PRIVATE) as label_sketch:
-            all_labels = []
-            for labels in batched(args.labels, args.divisions):
-                body_locations.append((0, y))
-                try:
-                    all_labels.append(
-                        render_divided_label(
-                            labels,
-                            label_area,
-                            divisions=args.divisions,
-                            options=options,
-                        ).locate(Location([0, y]))
-                    )
-                except fragments.InvalidFragmentSpecification as e:
-                    rich.print(f"\n[y][b]Could not proceed: {e}[/b][/y]\n")
-                    sys.exit(1)
-                y -= y_offset_each_label
-            logger.debug("Combining all labels")
-            add(all_labels)
+        labels_compound = render_collection_of_labels(
+            args.labels, args.divisions, y_offset_each_label, options, label_area
+        )
 
-        if args.box and is_2d:
-            logger.debug("Generating label outline for --box")
-            with BuildSketch(mode=Mode.PRIVATE) as body_box:
-                with Locations(body_locations):
-                    add(RectangleRounded(label_area.X, label_area.Y, label_area.Y / 10))
+        y = 0
+        body_locations = []
+        for boddex in range(len(labels_compound.children)):
+            body_locations.append((0, y))
+            y -= y_offset_each_label
 
         if not is_2d:
             # Create all of the bases
@@ -434,88 +481,93 @@ def run(argv: list[str] | None = None):
                 with Locations(body_locations):
                     add(body.part)
 
-            logger.debug("Extruding labels")
-            is_embossed = args.style == LabelStyle.EMBOSSED
-            extrude(
-                label_sketch.sketch,
-                amount=args.depth if is_embossed else -args.depth,
-                mode=(Mode.ADD if is_embossed else Mode.SUBTRACT),
-            )
+    if args.box and is_2d:
+        logger.debug("Generating label outline for --box")
+        with BuildSketch(mode=Mode.PRIVATE) as body_box_bsketch:
+            with Locations(body_locations):
+                RectangleRounded(label_area.X, label_area.Y, label_area.Y / 10)
+        body_box_sketch = body_box_bsketch.sketch
+
+    base_part = base_bpart.part
 
     if not is_2d:
-        part.part.label = "Base"
-
-    if not is_2d:
-        if args.style == LabelStyle.EMBEDDED:
-            # We want to make new volumes for the label, making it flush
-            embedded_label = extrude(label_sketch.sketch, amount=-args.depth)
-            embedded_label.label = "Label"
-            assembly = Compound([part.part, embedded_label])
+        logger.debug(f"BASE PART {base_part}\n{base_part.show_topology()}")
+        if args.style == LabelStyle.DEBOSSED:
+            base_part -= labels_compound  # algebra mode
+            # this cloning avoids "UserWarning: Unknown Compound type, color not set"; I don't know why
+            base_part = Part(base_part)
+            # this Compound wrapper doesn't seem to be needed, but doing it for consistency
+            assembly = Compound(children=[base_part])
         else:
-            assembly = Compound(part.part)
-
-        assembly = scale(assembly, (args.xscale, args.yscale, args.zscale))
+            assembly = Compound(children=[base_part, labels_compound])
+        base_part.label = clean_up_name("Base")
+        base_part.color = Color(args.base_color)
+        logger.info(f"Topology\n{assembly.show_topology(limit_class=Part)}")
 
     for output in args.output:
         if output.endswith(".stl"):
             logger.info(f"Writing STL {output}")
-            bd.export_stl(assembly, output)
+            export_stl(assembly, output)
         elif output.endswith(".step"):
             logger.info(f"Writing STEP {output}")
             export_step(assembly, output)
         elif output.endswith(".svg"):
             max_dimension = max(
-                *label_sketch.sketch.bounding_box().size, label_area.X, label_area.Y
+                *labels_compound.bounding_box().size, label_area.X, label_area.Y
             )
             exporter = ExportSVG(scale=100 / max_dimension)
-            exporter.add_layer("Shapes", fill_color=ColorIndex.BLACK, line_weight=0)
 
             if args.box and is_2d:
-                exporter.add_layer("Box", line_weight=1)
-                exporter.add_shape(body_box.sketch, layer="Box")
+                exporter.add_layer(
+                    "Box", line_color=Color(args.base_color), line_weight=1
+                )
+                exporter.add_shape(body_box_sketch, layer="Box")
+            layer_dict = {}
+            for pdex, part in enumerate(colored_parts(labels_compound)):
+                color = part.color
+                color_str = str(color)
+                if color_str not in layer_dict:
+                    exporter.add_layer(name=color_str, fill_color=color, line_weight=0)
+                    layer_dict[color_str] = True
+                part_in_plane = part.intersect(Plane.XY)
+                exporter.add_shape(part_in_plane, layer=color_str)
             logger.info(f"Writing SVG {output}")
-            exporter.add_shape(label_sketch.sketch, layer="Shapes")
             exporter.write(output)
         else:
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
     if args.vscode:
-        show_parts = []
-        show_cols: list[str | tuple[float, float, float] | None] = []
-        # Export both step and stl in vscode_ocp mode
         if is_2d:
-            show_parts.append(label_sketch.sketch)
+            show(labels_compound)
         else:
-            logger.info("Writing SVG label.stl")
+            # Export both step and stl in vscode_ocp mode
+            logger.info("Writing STL label.stl")
             bd.export_stl(assembly, "label.stl")
             logger.info("Writing STEP label.step")
             export_step(assembly, "label.step")
-            if args.style == LabelStyle.EMBEDDED:
-                show_parts.append(part.part)
-                show_cols.append(None)
-                show_parts.append(embedded_label)
-                show_cols.append((0.2, 0.2, 0.2))
-            else:
-                # Split the base for display as two colours
-                top = part.part.split(
-                    Plane.XY if is_embossed else Plane.XY.offset(-args.depth),
-                    keep=Keep.TOP,
-                )
-                if top:
-                    show_parts.append(top)
-                    show_cols.append((0.2, 0.2, 0.2))
-                if args.base != "none":
-                    bottom = part.part.split(Plane.XY, keep=Keep.BOTTOM)
-                    if bottom.wrapped:
-                        show_parts.append(bottom)
-                        show_cols.append(None)
 
-        show(
-            *show_parts,
-            colors=show_cols,
-            # position=[0, -10, 10],
-            # target=[0, 0, 0],
-        )
+            if args.style != LabelStyle.DEBOSSED:
+                # CAD viewer notices the Part colors
+                show(assembly)
+            else:
+                # part min Z will be negative; args.depth is positive
+                if -args.depth <= base_part.bounding_box().min.Z:
+                    # if the debossing goes all the way through the base, just show the base
+                    show([base_part], colors=[base_part.color])
+                else:
+                    # Split the base for display as two colours
+                    show_parts = []
+                    show_cols = []
+                    top = base_part.split(Plane.XY.offset(-args.depth), keep=Keep.TOP)
+                    if top:
+                        show_parts.append(top)
+                        show_cols.append(args.base_color)
+                    if args.base != "none":
+                        bottom = base_part.split(Plane.XY, keep=Keep.BOTTOM)
+                        if bottom:
+                            show_parts.append(bottom)
+                            show_cols.append(args.label_color)
+                    show(*show_parts, colors=show_cols)
 
 
 if __name__ == "__main__":
