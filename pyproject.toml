@@ -11,6 +11,7 @@ dependencies = [
     "rich>=13.7.1",
     "pint>=0.24.4",
     "segno~=1.6.1",
+    "lib3mf",
 ]
 
 [project.scripts]

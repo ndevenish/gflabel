@@ -26,6 +26,7 @@ from build123d import (
     FontStyle,
     Keep,
     Locations,
+    Mesher,
     Mode,
     Part,
     Plane,
@@ -47,6 +48,7 @@ from .bases.pred import PredBase, PredBoxBase
 from .bases.tailor import TailorBoxBase
 from .label import clean_up_name, render_collection_of_labels
 from .options import LabelStyle, RenderOptions
+from .three_mf import apply_3mf_face_colors
 from .util import IndentingRichHandler, unit_registry
 
 logger = logging.getLogger(__name__)
@@ -533,6 +535,18 @@ def run(argv: list[str] | None = None):
                 exporter.add_shape(part_in_plane, layer=color_str)
             logger.info(f"Writing SVG {output}")
             exporter.write(output)
+        elif output.endswith(".3mf"):
+            logger.info(f"Writing 3MF {output}")
+            exporter = Mesher()
+            parts = colored_parts(assembly)
+
+            for part in parts:
+                if part.color is not None and not isinstance(part.color, Color):
+                    part.color = Color(part.color)
+                exporter.add_shape(part, part_number=part.label)
+
+            exporter.write(output)
+            apply_3mf_face_colors(output, parts)
         else:
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
