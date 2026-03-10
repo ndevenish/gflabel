@@ -25,6 +25,7 @@ from build123d import (
     ExportSVG,
     FontStyle,
     Keep,
+    Location,
     Locations,
     Mode,
     Part,
@@ -313,6 +314,12 @@ def run(argv: list[str] | None = None):
         default="blue",
     )
     parser.add_argument(
+        "--embedded-lift",
+        help="Visualization can have artifacts for embedded style, so lift the embedded labels on Z axis by this (small) amount (in mm). Use 0 to ignore and get precise STEP/STL files. Default: %(default)s",
+        type=float,
+        default=0.005,
+    )
+    parser.add_argument(
         "--list-fragments",
         help="List all available fragments.",
         action=ListFragmentsAction,
@@ -499,6 +506,10 @@ def run(argv: list[str] | None = None):
             # this Compound wrapper doesn't seem to be needed, but doing it for consistency
             assembly = Compound(children=[base_part])
         else:
+            if args.style == LabelStyle.EMBEDDED and args.embedded_lift != 0:
+                labels_compound.locate(
+                    Location(position=Vector(0, 0, args.embedded_lift))
+                )
             assembly = Compound(children=[base_part, labels_compound])
         base_part.label = clean_up_name("Base")
         base_part.color = Color(args.base_color)
