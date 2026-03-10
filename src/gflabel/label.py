@@ -20,6 +20,7 @@ from build123d import (
     Vector,
     add,
     extrude,
+    scale,
 )
 from rich import print
 
@@ -323,17 +324,39 @@ class LabelRenderer:
         # attached to the Fragment object
 
         current_color = self.opts.default_color
+        current_xscale: float = 1
+        current_yscale: float = 1
+        current_zscale: float = 1
+        current_offset = Location(position=(0, 0, 0))
         renderable_frags = []
         for fragdex, fragment in enumerate(frags):
             if isinstance(fragment, fragments.ModifierFragment):
                 if isinstance(fragment, fragments.ColorFragment):
                     logger.info(f"Switching to color '{fragment.color}'")
                     current_color = fragment.color
+                elif isinstance(fragment, fragments.ScaleFragment):
+                    logger.info(
+                        f"Scaling factor(s) ({fragment.x}, {fragment.y}, {fragment.z}) applied"
+                    )
+                    current_xscale = fragment.x
+                    current_yscale = fragment.y
+                    current_zscale = fragment.z
+                elif isinstance(fragment, fragments.OffsetFragment):
+                    logger.info(
+                        f"Offsets ({fragment.x}, {fragment.y}, {fragment.z}) applied"
+                    )
+                    current_offset = Location(
+                        position=(fragment.x, fragment.y, fragment.z)
+                    )
 
             else:
-                fragment_data = {}
+                fragment_data: dict = {}
                 fragment_data[FragmentDataItem.FRAGMENT_NAME] = frag_names[fragdex]
                 fragment_data[FragmentDataItem.COLOR_NAME] = current_color
+                fragment_data[FragmentDataItem.XSCALE] = current_xscale
+                fragment_data[FragmentDataItem.YSCALE] = current_yscale
+                fragment_data[FragmentDataItem.ZSCALE] = current_zscale
+                fragment_data[FragmentDataItem.OFFSET] = current_offset
                 fragment.fragment_data = fragment_data  # type: ignore[attr-defined]
                 renderable_frags.append(fragment)
         frags = renderable_frags
@@ -429,12 +452,23 @@ def fragment_sketch_to_part(
         if fragment.visible:
             with BuildPart(mode=Mode.PRIVATE) as child_bpart:
                 extruded = extrude(frag_sketch, opts.depth)
+                # Rescaling can be performance expensive, so only do it if needed
+                xscale = fragment.fragment_data[FragmentDataItem.XSCALE]
+                yscale = fragment.fragment_data[FragmentDataItem.YSCALE]
+                zscale = fragment.fragment_data[FragmentDataItem.ZSCALE]
+                if xscale != 1 or yscale != 1 or zscale != 1:
+                    logger.info(
+                        f"Scaling {fragment_name} fragment {frag_sketch_label} by ({xscale}, {yscale}, {zscale})"
+                    )
+                    extruded = scale(extruded, (xscale, yscale, zscale))
                 add(extruded)
             child_part = child_bpart.part
             child_part.color = (
                 frag_sketch.color if frag_sketch.color else fragment_color_name
             )
             child_part.locate(fxy)
+            fragment_offset = fragment.fragment_data[FragmentDataItem.OFFSET]
+            child_part.move(fragment_offset)
             child_part_label = (
                 frag_sketch_label
                 if frag_sketch_label

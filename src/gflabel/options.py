@@ -128,6 +128,10 @@ class RenderOptions(NamedTuple):
 class FragmentDataItem(Enum):
     FRAGMENT_NAME = auto()
     COLOR_NAME = auto()
+    XSCALE = auto()
+    YSCALE = auto()
+    ZSCALE = auto()
+    OFFSET = auto()
 
     @classmethod
     def _missing_(cls, value):

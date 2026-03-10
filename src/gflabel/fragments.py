@@ -84,6 +84,24 @@ class InvalidFragmentSpecification(RuntimeError):
     pass
 
 
+def _args_to_dict(allowed: list[str] | None = None, *args):
+    args_dict = {}
+    for arg in args:
+        key, c, value = arg.partition("=")
+        key = key.strip().casefold()
+        value = value.strip()
+        if not c or not value:
+            raise InvalidFragmentSpecification(
+                f"KEY=VALUE arguments expected, but saw {arg}."
+            )
+        if allowed and key not in allowed:
+            raise InvalidFragmentSpecification(
+                f"Key {key} is unexpected. Wanted one of {allowed}"
+            )
+        args_dict[key] = value
+    return args_dict
+
+
 def fragment_from_spec(spec: str) -> Fragment:
     # If the fragment is just a number, this is distance to space out
     try:
@@ -1446,6 +1464,40 @@ class ColorFragment(ModifierFragment):
 
     def __init__(self, color_name: str):
         self.color = color_name
+
+
+@fragment("scale")
+class ScaleFragment(ModifierFragment):
+    """Apply a scaling on one or more axes for subsequent fragments on a line."""
+
+    examples = ["normal{scale(x = 2.5, y = 0.5)}scaled"]
+
+    def __init__(self, *args: list[str]):
+        if len(args) == 0 or len(args) > 3:
+            raise InvalidFragmentSpecification(
+                f"For scale fragments, must have 1, 2, or 3 arguments. Saw {len(args)} arguments: {args}"
+            )
+        args_dict = _args_to_dict(["x", "y", "z"], *args)
+        self.x = float(args_dict.get("x", "1"))
+        self.y = float(args_dict.get("y", "1"))
+        self.z = float(args_dict.get("z", "1"))
+
+
+@fragment("offset")
+class OffsetFragment(ModifierFragment):
+    """Apply a placement offset on one or more axes for subsequent fragments on a line."""
+
+    examples = ["normal{offset(x = 2.5, y = 0.5)}shifted"]
+
+    def __init__(self, *args: list[str]):
+        if len(args) == 0 or len(args) > 3:
+            raise InvalidFragmentSpecification(
+                f"For offset fragments, must have 1, 2, or 3 arguments. Saw {len(args)} arguments: {args}"
+            )
+        args_dict = _args_to_dict(["x", "y", "z"], *args)
+        self.x = float(args_dict.get("x", "0"))
+        self.y = float(args_dict.get("y", "0"))
+        self.z = float(args_dict.get("z", "0"))
 
 
 @fragment("magnet", examples=["{magnet}"])
