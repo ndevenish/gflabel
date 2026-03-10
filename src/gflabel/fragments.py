@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import functools
 import importlib.resources
 import io
@@ -22,7 +23,9 @@ from build123d import (
     CenterArc,
     Circle,
     Compound,
+    Edge,
     EllipticalCenterArc,
+    Face,
     GridLocations,
     Line,
     Location,
@@ -46,9 +49,11 @@ from build123d import (
     make_face,
     mirror,
     offset,
+    scale,
+    trace,
 )
 
-from .options import RenderOptions
+from .options import FragmentDataItem, RenderOptions, SvgMono
 from .util import format_table
 
 logger = logging.getLogger(__name__)
@@ -257,7 +262,150 @@ class TextFragment(Fragment):
             with options.font.font_options() as f:
                 print(f"Using {f}")
                 Text(self.text, font_size=options.font.get_allowed_height(height), **f)
-        return sketch.sketch
+        frag_sketch = sketch.sketch
+        if not options.text_as_parts:
+            return frag_sketch
+        else:
+            faces = frag_sketch.get_type(Face)
+            # build123d text rendering seems to order the faces with the
+            # final character first, and then the other characters in order.
+            # I don't know if that always holds true, but rearranging things
+            # on the assumption that it is. Best effort!
+            if len(faces):
+                the_first_shall_be_last = faces.pop(0)
+                faces.append(the_first_shall_be_last)
+            face_sketches: list[Face] = []
+            for face in faces:
+                # Hoping that the character in the text fragment is in the right order
+                # Even so, some characters render as multiple faces (e.g., "i").
+                # Only use this scheme if the face count is the same as the text length.
+                # It could still be wrong if the text contains spaces. For example,
+                # "i x" would contain 3 faces and mislead us. Another best effort!
+                if len(faces) == len(self.text) and " " not in self.text:
+                    face_tick = self.text[len(face_sketches)]
+                else:
+                    face_tick = str(len(face_sketches))
+                fragment_name = self.fragment_data[FragmentDataItem.FRAGMENT_NAME]  # type: ignore[attr-defined]
+                face.label = (
+                    fragment_name
+                    if fragment_name == face_tick
+                    else fragment_name + "_" + face_tick
+                )
+                # if we did anything with colors, we'd set the face.color here
+                # and possibly suffix the frac.label with the color name
+                face_sketches.append(face)
+            return Compound(children=face_sketches)
+
+
+@fragment("svg")
+class SvgFragment(Fragment):
+    """Imports an SVG from a file and renders it as a collection of (colored) Sketches. See COLOR_AND_SVG_NOTES.md"""
+
+    examples = ["text{svg(file=/some/mysvg.svg, flip_y=true, label=mysvg, color=green}"]
+
+    def __init__(self, *args: list[str]):
+        args_dict = _args_to_dict(["file", "flip_y", "label", "color"], *args)
+        # file is required
+        if "file" not in args_dict:
+            raise InvalidFragmentSpecification(
+                f"SvgFragment file argument is required but missing. {args_dict}'."
+            )
+        self.file = args_dict["file"]
+
+        if "flip_y" not in args_dict:
+            self.flip_y = True
+        else:
+            fy = args_dict["flip_y"].casefold()
+            if fy == "false":
+                self.flip_y = False
+            elif fy == "true":
+                self.flip_y = True
+            else:
+                raise InvalidFragmentSpecification(
+                    f"SvgFragment flip_y argument, if given, must be true or false. {args_dict}"
+                )
+
+        self.label = args_dict.get("label", "")
+        self.color = args_dict.get("color", None)
+
+    def render(self, height: float, maxsize: float, options: RenderOptions) -> Compound:
+        if not height:
+            raise ValueError("Trying to render zero-height fragment")
+        shapes = import_svg(self.file, flip_y=self.flip_y)
+        if options.svg_mono in [SvgMono.BOTH, SvgMono.IMPORT]:
+            logger.info(f"Discarding SVG colors due to --svg-mono {options.svg_mono}")
+        for sdex, shape in enumerate(shapes):
+            if options.svg_mono in [SvgMono.BOTH, SvgMono.IMPORT]:
+                shape.color = (
+                    self.color
+                    if self.color
+                    else self.fragment_data[FragmentDataItem.COLOR_NAME]  # type: ignore[attr-defined]
+                )
+            label_from_file = shape.label if shape.label else str(sdex)
+            label = (
+                self.label + "_" + label_from_file if self.label else label_from_file
+            )
+            shape.label = label
+            shape.label_from_file = label_from_file
+            if shape.location.position.X != 0 or shape.location.position.Y != 0:
+                print(f"    SHAPE non zero {shape} {shape.location.position}")
+        svg_compound = Compound(children=shapes)
+        bb = svg_compound.bounding_box()
+        yscale = height / bb.size.Y
+        xscale = maxsize / bb.size.X
+        best_scale = min(yscale, xscale)
+        scaled_shapes = []
+        for sdex, shape in enumerate(shapes):
+            label = shape.label
+            label_from_file = shape.label_from_file
+            color = shape.color
+            if not isinstance(shape, Face):
+                # I tried widening the Wires with trace(), but it produced an error:
+                # OCP.OCP.Standard.Standard_ConstructionError: gp_Vec::Normalize() - vector has zero norm
+                # I don't know why that happens since it ultimately comes from import_svg,
+                # and the topology looks well-formed to my visual spot-checking.
+                #
+                # I found a worksaround, after a lot of trial and error. The scheme
+                # is to iterate the Edges that make up the Wire, and for each such
+                # Edge, get its Vertices, make a new Edge from them, and trace that.
+                # There must be something internal that isn't liked, but I don't know
+                # what it is. Most edges pass without problems.
+                shape = copy.deepcopy(shape)
+                try:
+                    shape = trace(shape, 0.1)
+                except Exception:
+                    logger.info(
+                        f"SvgFragment id: '{label_from_file}' trace() of {shape.__class__.__name__} failed, iterating Edges."
+                    )
+                    traced_edges = []
+                    for edex, edge in enumerate(shape.edges()):
+                        try:
+                            traced_edge = trace(edge, 0.1)
+                            traced_edges.append(traced_edge)
+                        except Exception:
+                            logger.info(
+                                f"SvgFragment id: '{label_from_file}' trace() of Edge {edex} failed, using Vertices."
+                            )
+                            vertices = edge.vertices()
+                            if len(vertices) != 2:
+                                logger.info(
+                                    f"SvgFragment id: '{label_from_file}' Edge {edex}, expected 2 vertices, saw {len(vertices)}"
+                                )
+                            new_edge = Edge.make_line(vertices[0], vertices[1])
+                            traced_edge = trace(new_edge, 0.1)
+                            traced_edges.append(traced_edge)
+                    shape = Compound(children=traced_edges)
+            if shape:
+                # Resize this to match the requested height, and to be centered.
+                # We have to scale the Shapes individually in order to keep track
+                # of the labels and colors.
+                translated_shape = shape.translate(-bb.center())
+                scaled_shape = scale(translated_shape, (best_scale, best_scale, 0))
+                scaled_shape.label = label
+                scaled_shape.color = color
+                scaled_shapes.append(scaled_shape)
+        svg_compound = Compound(children=scaled_shapes)
+        return svg_compound
 
 
 @functools.lru_cache

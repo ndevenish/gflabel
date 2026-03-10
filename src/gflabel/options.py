@@ -29,6 +29,37 @@ class LabelStyle(Enum):
         return self.name.lower()
 
 
+class SvgMono(Enum):
+    NONE = auto()
+    IMPORT = auto()
+    EXPORT = auto()
+    BOTH = auto()
+
+    @classmethod
+    def _missing_(cls, value):
+        for kind in cls:
+            if kind.name.lower() == value.lower():
+                return kind
+
+    def __str__(self):
+        return self.name.lower()
+
+
+class SvgBase(Enum):
+    NONE = auto()
+    OUTLINE = auto()
+    SOLID = auto()
+
+    @classmethod
+    def _missing_(cls, value):
+        for kind in cls:
+            if kind.name.lower() == value.lower():
+                return kind
+
+    def __str__(self):
+        return self.name.lower()
+
+
 class FontOptions(NamedTuple):
     font: str | None = None
     font_style: FontStyle = FontStyle.REGULAR
@@ -93,6 +124,8 @@ class RenderOptions(NamedTuple):
     column_gap: float = 0.4
     depth: float = 0.4
     default_color: str = "black"
+    text_as_parts: bool = False
+    svg_mono: SvgMono = SvgMono.NONE
 
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> RenderOptions:
@@ -122,6 +155,8 @@ class RenderOptions(NamedTuple):
             column_gap=args.column_gap,
             depth=args.depth,
             default_color=args.label_color,
+            text_as_parts=args.text_as_parts,
+            svg_mono=args.svg_mono,
         )
 
 

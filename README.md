@@ -136,6 +136,8 @@ usage: gflabel [-h] [--vscode] [-w WIDTH] [--height HEIGHT]
                [--font-path FONT_PATH] [--margin MARGIN] [-o OUTPUT]
                [--style {embossed,debossed,embedded}]
                [--base-color BASE_COLOR] [--label-color LABEL_COLOR]
+               [--svg-mono {none,import,export,both}]
+               [--svg-base {none,outline,solid}] [--text-as-parts]
                [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP]
                [--column-gap COLUMN_GAP] [--xscale XSCALE] [--yscale YSCALE]
                [--zscale ZSCALE] [-v] [--version VERSION]
@@ -197,6 +199,20 @@ options:
                         The name of a color used for rendering the label
                         contents. Can be any of the recognized CSS3 color
                         names. Ignored for style 'debossed'. Default: blue
+  --svg-mono {none,import,export,both}
+                        SVG imports and exports preserve coloring. You can
+                        suppress that (treating SVGs as monochome) with this
+                        argument for import, export, or both. Default: none
+  --svg-base {none,outline,solid}
+                        SVG files are normally produced with just the label
+                        content and an optional box outline. With this option,
+                        an outline or full shape of the bases can be included.
+                        --svg-base takes precedence over --box.
+  --text-as-parts       Text fragments are rendered as a single Part. If you
+                        specify this argument, they are rendered as Parts for
+                        individual characters, which can help identify them in
+                        external tools, though the Part labels are 'best
+                        effort' and are sometimes disordered.
   --list-fragments      List all available fragments.
   --list-symbols        List all available electronic symbols
   --label-gap LABEL_GAP
@@ -315,6 +331,7 @@ A list of all the fragments currently recognised:
 | qr, qrcode        | Generate a QR from text or URL data. Call as `qr(data[,EC])` where `EC` is the error recovery capacity, and can be `L`(7%), `M`(15%, default), `Q`(25%) or `H`(30%). For best results, ensure the label height is at least 10mm for reliable scanning. |
 | scale             | Apply a scaling on one or more axes for subsequent fragments on a line. |
 | square_nut        | A square with a center hole.                                      |
+| svg               | Imports an SVG from a file and renders it as a collection of (colored) Sketches. See COLOR_AND_SVG_NOTES.md |
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
 | tnut              | T-slot nut, rectangular horizontal profile                        |
