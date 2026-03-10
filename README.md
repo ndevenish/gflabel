@@ -310,8 +310,10 @@ A list of all the fragments currently recognised:
 | magnet            | Horseshoe shaped magnet symbol.                                   |
 | measure           | Fills as much area as possible with a dimension line, and shows the length. Useful for debugging. |
 | mqr, microqr      | Generate a [Micro QR Code](https://en.wikipedia.org/wiki/QR_code#Micro_QR_code) with data. Same arguments as qr, except does not support the `H` level. |
+| offset            | Apply a placement offset on one or more axes for subsequent fragments on a line. |
 | nut_profile       | Rectangle with two horizontal lines, as the side view of a hex nut. |
 | qr, qrcode        | Generate a QR from text or URL data. Call as `qr(data[,EC])` where `EC` is the error recovery capacity, and can be `L`(7%), `M`(15%, default), `Q`(25%) or `H`(30%). For best results, ensure the label height is at least 10mm for reliable scanning. |
+| scale             | Apply a scaling on one or more axes for subsequent fragments on a line. |
 | square_nut        | A square with a center hole.                                      |
 | sym, symbol       | Render an electronic symbol.                                      |
 | threaded_insert   | Representation of a threaded insert.                              |
