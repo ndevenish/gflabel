@@ -138,6 +138,7 @@ usage: gflabel [-h] [--vscode] [-w WIDTH] [--height HEIGHT]
                [--base-color BASE_COLOR] [--label-color LABEL_COLOR]
                [--svg-mono {none,import,export,both}]
                [--svg-base {none,outline,solid}] [--text-as-parts]
+               [--embedded-lift EMBEDDED_LIFT]
                [--list-fragments] [--list-symbols] [--label-gap LABEL_GAP]
                [--column-gap COLUMN_GAP] [--xscale XSCALE] [--yscale YSCALE]
                [--zscale ZSCALE] [-v] [--version VERSION]
@@ -213,6 +214,11 @@ options:
                         individual characters, which can help identify them in
                         external tools, though the Part labels are 'best
                         effort' and are sometimes disordered.
+  --embedded-lift EMBEDDED_LIFT
+                        Visualization can have artifacts for embedded style,
+                        so lift the embedded labels on Z axis by this (small)
+                        amount (in mm). Use 0 to ignore and get precise
+                        STEP/STL files. Default: 0.005
   --list-fragments      List all available fragments.
   --list-symbols        List all available electronic symbols
   --label-gap LABEL_GAP

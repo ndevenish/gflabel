@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10, <3.13"
 resolution-markers = [
     "python_full_version >= '3.11'",
@@ -324,6 +324,7 @@ version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "build123d" },
+    { name = "lib3mf" },
     { name = "pint", version = "0.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pint", version = "0.25.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "rich" },
@@ -333,6 +334,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "build123d", specifier = ">=0.8.0" },
+    { name = "lib3mf" },
     { name = "pint", specifier = ">=0.24.4" },
     { name = "rich", specifier = ">=13.7.1" },
     { name = "segno", specifier = "~=1.6.1" },

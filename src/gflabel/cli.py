@@ -25,7 +25,9 @@ from build123d import (
     ExportSVG,
     FontStyle,
     Keep,
+    Location,
     Locations,
+    Mesher,
     Mode,
     Part,
     Plane,
@@ -47,6 +49,7 @@ from .bases.pred import PredBase, PredBoxBase
 from .bases.tailor import TailorBoxBase
 from .label import clean_up_name, render_collection_of_labels
 from .options import LabelStyle, RenderOptions, SvgBase, SvgMono
+from .three_mf import apply_3mf_face_colors
 from .util import IndentingRichHandler, unit_registry
 
 logger = logging.getLogger(__name__)
@@ -333,6 +336,12 @@ def run(argv: list[str] | None = None):
         default=False,
     )
     parser.add_argument(
+        "--embedded-lift",
+        help="Visualization can have artifacts for embedded style, so lift the embedded labels on Z axis by this (small) amount (in mm). Use 0 to ignore and get precise STEP/STL files. Default: %(default)s",
+        type=float,
+        default=0.005,
+    )
+    parser.add_argument(
         "--list-fragments",
         help="List all available fragments.",
         action=ListFragmentsAction,
@@ -519,6 +528,10 @@ def run(argv: list[str] | None = None):
             # this Compound wrapper doesn't seem to be needed, but doing it for consistency
             assembly = Compound(children=[base_part])
         else:
+            if args.style == LabelStyle.EMBEDDED and args.embedded_lift != 0:
+                labels_compound.locate(
+                    Location(position=Vector(0, 0, args.embedded_lift))
+                )
             assembly = Compound(children=[base_part, labels_compound])
         base_part.label = clean_up_name("Base")
         base_part.color = Color(args.base_color)
@@ -575,6 +588,18 @@ def run(argv: list[str] | None = None):
                     exporter.add_shape(part_in_plane, layer=color_str)
             logger.info(f"Writing SVG {output}")
             exporter.write(output)
+        elif output.endswith(".3mf"):
+            logger.info(f"Writing 3MF {output}")
+            exporter = Mesher()
+            parts = colored_parts(assembly)
+
+            for part in parts:
+                if part.color is not None and not isinstance(part.color, Color):
+                    part.color = Color(part.color)
+                exporter.add_shape(part, part_number=part.label)
+
+            exporter.write(output)
+            apply_3mf_face_colors(output, parts)
         else:
             logger.error(f"Error: Do not understand output format '{args.output}'")
 
